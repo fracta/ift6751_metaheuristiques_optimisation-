@@ -57,3 +57,6 @@ target/
 # archive files
 *.gz
 *.zip
+
+# kate tmp file
+*.swp
