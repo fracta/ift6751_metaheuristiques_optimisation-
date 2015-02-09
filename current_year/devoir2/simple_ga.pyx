@@ -33,6 +33,16 @@ cdef class Route:
         return self.__str__()
 
 
+cpdef double get_fitness(Route route, np.ndarray distance_matrix):
+    cdef double distance = 0
+    cdef int i
+    for i in range(len(route)):
+        distance += distance_matrix[route[i]][route[i+1]]
+    distance += distance_matrix[0][route[0]]
+    distance += distance_matrix[route[-1]][0]
+    return distance
+
+
 #def steepest_improvement(tour, dist):
     #"""tour reorganization optimization, goes through every possible 2-opt combinations"""
     #if len(tour) <= 2:
