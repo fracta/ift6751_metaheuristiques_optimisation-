@@ -3,11 +3,12 @@
 import csv
 import cython
 import numpy as np
+cimport numpy as np
 
 
-def read_vrp(file_name):
+cpdef list read_vrp(str file_name):
     """file reader for the text file format """
-    data = []
+    cdef list data = []
     with open(file_name) as F:
         reader = csv.reader(F, delimiter=' ')
         for row in reader:
@@ -15,18 +16,16 @@ def read_vrp(file_name):
     return data
 
 
-@cython.ccall
-@cython.returns(np.ndarray)
-@cython.locals(client_locations=np.ndarray, num_clients=cython.int, matrix=np.ndarray)
-def get_distance_matrix(client_locations):
+cpdef np.ndarray get_distance_matrix(client_positions):
     """compute the euclidean distance matrix between all points"""
-    num_clients = len(client_locations)
-    matrix = np.zeros((num_clients, num_clients))
+    cdef int num_clients = len(client_positions)
+    print client_positions
+    cdef np.ndarray matrix = np.zeros((num_clients, num_clients))
     for i in range(num_clients):
         for j in range(i, num_clients):
-            diff_x = client_locations[i][0] - client_locations[j][0]
+            diff_x = client_positions[i][0] - client_positions[j][0]
             diff_x *= diff_x
-            diff_y = client_locations[i][1] - client_locations[j][1]
+            diff_y = client_positions[i][1] - client_positions[j][1]
             diff_y *= diff_y
             diff_y += diff_x
             diff_y = np.sqrt(diff_y)
@@ -35,16 +34,16 @@ def get_distance_matrix(client_locations):
     return matrix
 
 
-@cython.cclass
-@cython.locals(num_clients=cython.int,
-               vehicule_capacity=cython.double,
-               depot_position=tuple,
-               client_positions=np.ndarray,
-               weights=np.ndarray,
-               name=str,
-               distances=np.ndarray)
-class CVRPProblem(object):
+cdef class CVRPProblem:
     """data for the constrained vrp problem"""
+    cdef int num_clients
+    cdef double vehicule_capacity
+    cdef tuple depot_position
+    cdef np.ndarray client_positions
+    cdef np.ndarray weights
+    cdef str name
+    cdef np.ndarray distances
+    
     def __init__(self, data_table, name=""):
         self.num_clients = int(data_table[0][0])
         self.vehicule_capacity = float(data_table[0][1])
@@ -55,6 +54,7 @@ class CVRPProblem(object):
             self.client_positions[i] = (float(x_coord), float(y_coord))
             self.weights[i] = float(capacity)
         self.name = name
+        print self.client_positions
         self.distances = get_distance_matrix(self.client_positions)
     
     def get_num_clients(self):
@@ -80,5 +80,4 @@ class CVRPProblem(object):
     
     def __repr__(self):
         return self.__str__()
-
 
