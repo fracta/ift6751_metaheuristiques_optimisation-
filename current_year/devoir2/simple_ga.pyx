@@ -1,9 +1,11 @@
-"""implementations from Solving the Vehicle Routing Problem with 
+"""implementations from Solving the Vehicle Routing Problem with
 Genetic Algorithms"""
 
 import numpy as np
 cimport numpy as np
 
+
+# REPRESENTATION OF A SINGLE ROUTE (solution is multiple routes)
 cdef class Route:
     """individuals upon which the evolution acts"""
     cdef np.ndarray nodes
@@ -13,6 +15,7 @@ cdef class Route:
         assert(nodes[-1]== 0)
         for i in range(1, len(nodes)-1):
             assert(i != 0)
+        assert(len(nodes) > 2)
         self.nodes = nodes
     
     cpdef two_opt(self, int ind1, int ind3):
@@ -56,66 +59,40 @@ cdef class Route:
         return self.__str__()
 
 
-
-
-
-def steepest_improvement_debug(route, prob):
+# LOCAL SEARCH METHOD
+cpdef steepest_improvement(Route route, np.ndarray distance_matrix):
     """route reorganization optimization, greedy local search"""
-    if len(route) < 4:
+    if len(route) < 5:
+        # 2 nodes are impossible, 3 and 4 are automatically optimal
         return
-    
-    dist = prob.get_distance_matrix()
-    distance = route.get_distance(prob)
-    print("initial distance " + str(distance))
-    while True:
+    cdef int ind1, ind3, n1, n2, n3, n4
+    cdef double savings, proposed_savings
+    while True:  # iterate until there isn't any better local choice (2-opt)
         savings = 0.
         for ind1 in range(0, len(route)-2):
             for ind3 in range(ind1+2, len(route)-1):
-                if (ind3 != ind1 + 1):
-                    #print("{0} and {1}".format(ind1,ind3))
-                    t1 = route[ind1]
-                    t2 = route[ind1 + 1]
-                    t3 = route[ind3]
-                    t4 = route[ind3+1]
-                    actual = dist[t1][t2] + dist[t3][t4]
-                    proposed = dist[t1][t3] + dist[t2][t4]
-                    if proposed < actual:
-                        savings = actual - proposed
-                        best_ind1 = ind1
-                        best_ind3 = ind3
-
+                n1 = route[ind1]
+                n2 = route[ind1 + 1]
+                n3 = route[ind3]
+                n4 = route[ind3+1]
+                actual = distance_matrix[n1][n2] + distance_matrix[n3][n4]
+                proposed = distance_matrix[n1][n3] + distance_matrix[n2][n4]
+                proposed_savings = actual - proposed
+                if proposed_savings > savings:
+                    best_ind1 = ind1
+                    best_ind3 = ind3
+                    savings = proposed_savings
         if savings > 0.:
-            print("best savings = {0} for {1} {2}".format(savings, best_ind1, best_ind3))
-            print("{0}->{1}; {2}->{3}".format(best_ind1, best_ind1+1, best_ind3, best_ind3+1))
             route.two_opt(best_ind1, best_ind3)
-            new_dist = route.get_distance(prob)
-            assert( new_dist < distance)
-            print("distance = " + str(new_dist))
-            distance = new_dist
         else:
-            break
+            return
     return
 
 
-#def test_random_routes(nroutes, prob):
-    #for i in range(nroutes):
-        #print("iter " + str(i))
-        #cur = np.zeros(7, dtype='i')
-        #permut = np.random.permutation(np.arange(1, 6))
-        #cur[1:6] = permut
-        #route = simple_ga.Route(cur)
-        #print(route)
-        #steepest_improvement_debug(route, prob)
-        #print("\n\n\n")
-
-#def lambda_opt(graph, distance_matrix):
-    #"""local search method for the VRP"""
-    
+def convex_hull(cities, positions):
+    """find the convex hull of a TSP, basically a route"""
     
 
 
+# CROSSOVER OPERATOR
 
-
-#def steepest_improvement():
-    #""" """
-    

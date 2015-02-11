@@ -45,11 +45,11 @@ cdef class CVRPProblem:
     def __init__(self, data_table, problem_name=""):
         self.vehicule_capacity = float(data_table[0][1])
         num_clients = int(data_table[0][0])
-        self.positions = np.zeros(num_clients+1, dtype=[("x", float), ("y", float)])
+        self.positions = np.zeros(num_clients+1, dtype=[("x", float), ("y", float), ('id', int)])
         self.weights = np.zeros(num_clients+1)
-        self.positions[0] = (float(data_table[1][0]), float(data_table[1][1]))
+        self.positions[0] = (float(data_table[1][0]), float(data_table[1][1]), 0)
         for (i, (x_coord, y_coord, capacity)) in enumerate(data_table[2:]):
-            self.positions[i+1] = (float(x_coord), float(y_coord))
+            self.positions[i+1] = (float(x_coord), float(y_coord), i+1)
             self.weights[i+1] = float(capacity)
         self.problem_name = problem_name
         self.distance_matrix = get_distance_matrix(self.positions)
@@ -71,4 +71,5 @@ cdef class CVRPProblem:
     
     def __repr__(self):
         return self.__str__()
+    
 
