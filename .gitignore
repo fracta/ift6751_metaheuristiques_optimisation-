@@ -60,3 +60,6 @@ target/
 
 # kate tmp file
 *.swp
+
+# quasirandom stuff
+current_year/devoir2/quasirandom/*

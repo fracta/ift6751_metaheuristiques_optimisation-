@@ -4,19 +4,32 @@ import numpy as np
 cimport numpy as np
 
 
-
-# REPRESENTATION OF A SINGLE ROUTE (solution is multiple routes)
+# ROUTE RELATED STUFF----------------------------------------------------------
 cdef class Route:
-    """data representation of the routes of a solution"""
+    """data representation of the route of a solution"""
+    # fields
     cdef np.ndarray nodes
+    # constructor
     def __init__(self, np.ndarray nodes):
         assert(nodes[0] == 0)
         assert(nodes[-1]== 0)
         for i in range(1, len(nodes)-1):
             assert(i != 0)
-        assert(len(nodes) > 2)
+        assert(len(nodes) > 1)  # depot to depot routes are allowed
         self.nodes = nodes
-    
+    # getters
+    def get_nodes(self):
+        return self.nodes
+    def __getitem__(self, index):
+        return self.nodes[index]
+    # representation
+    def __len__(self):
+        return len(self.nodes)
+    def __str__(self):
+        return str(self.nodes)
+    def __repr__(self):
+        return self.__str__()
+    # optimization methods
     cpdef two_opt(self, int ind1, int ind3):
         """2-opt procedure for vertice exchange"""
         assert(ind1 != ind3 and ind1 + 1 != ind3)
@@ -25,92 +38,112 @@ cdef class Route:
         rev = rev[::-1]
         self.nodes[ind1+1:ind3+1] = rev
         return
-    
-    cpdef respects_capacity(self, weights, max_capacity):
-        """used to assert that the route created respects capacity limit"""
-        cdef double total = 0.
-        for client in self.nodes:
-            total+=weights[client]
-        if total <= max_capacity:
-            return True
-        else:
-            return False
-    
-    cpdef get_distance(self, distance_matrix):
-        """calculate the distance used in the route"""
-        cdef double distance = 0
-        cdef int i
-        for i in range(len(self.nodes)-1):
-            vertex = distance_matrix[self.nodes[i]][self.nodes[i+1]]
-            distance += vertex
-        return distance
-    
-    def get_nodes(self):
-        return self.nodes
-    def __getitem__(self, index):
-        return self.nodes[index]
-    def __len__(self):
-        return len(self.nodes)
-    def __str__(self):
-        return str(self.nodes)
-    def __repr__(self):
-        return self.__str__()
-
-
-
-# LOCAL SEARCH METHOD
-cpdef steepest_improvement(Route route, np.ndarray distance_matrix):
-    """route reorganization optimization, greedy local search"""
-    if len(route) < 5:
-        # 2 nodes are impossible, 3 and 4 are automatically optimal
-        return
-    cdef int ind1, ind3, n1, n2, n3, n4
-    cdef double savings, proposed_savings
-    while True:  # iterate until there isn't any better local choice (2-opt)
-        savings = 0.
-        for ind1 in range(0, len(route)-2):
-            for ind3 in range(ind1+2, len(route)-1):
-                n1 = route[ind1]
-                n2 = route[ind1 + 1]
-                n3 = route[ind3]
-                n4 = route[ind3+1]
-                actual = distance_matrix[n1][n2] + distance_matrix[n3][n4]
-                proposed = distance_matrix[n1][n3] + distance_matrix[n2][n4]
-                proposed_savings = actual - proposed
-                if proposed_savings > savings:
-                    best_ind1 = ind1
-                    best_ind3 = ind3
-                    savings = proposed_savings
-        if savings > 0.:
-            route.two_opt(best_ind1, best_ind3)
-        else:
+    # Solving the Vehicle Routing Problem with Genetic Algorithms by
+    # Áslaug Sóley Bjarnadóttir
+    cpdef steepest_improvement(self, np.ndarray distance_matrix):
+        """route reorganization optimization, greedy local search"""
+        if len(self) < 5:
+            # 2 nodes routes are empty, 3 and 4 are automatically optimal
             return
-    return
+        cdef int ind1, ind3, n1, n2, n3, n4
+        cdef int best_ind1 = 0
+        cdef int best_ind3 = 0
+        cdef double savings, proposed_savings
+        while True:  # iterate until there isn't any better local choice (2-opt)
+            savings = 0.
+            for ind1 in range(0, len(self)-2):
+                for ind3 in range(ind1+2, len(self)-1):
+                    n1 = self[ind1]
+                    n2 = self[ind1 + 1]
+                    n3 = self[ind3]
+                    n4 = self[ind3+1]
+                    actual = distance_matrix[n1][n2] + distance_matrix[n3][n4]
+                    proposed = distance_matrix[n1][n3] + distance_matrix[n2][n4]
+                    proposed_savings = actual - proposed
+                    if proposed_savings > savings:
+                        best_ind1 = ind1
+                        best_ind3 = ind3
+                        savings = proposed_savings
+            if savings > 0.:
+                self.two_opt(best_ind1, best_ind3)
+            else:
+                return
+        return
+
+    # used for fitness evaluation, returns distance and capacity used
+    cpdef get_information(self,
+                          np.ndarray distance_matrix,
+                          np.ndarray weights):
+        """calculate the distance and the capacity used by the route"""
+        cdef double distance = 0.
+        cdef double capacity_used = 0.
+        for (index, node) in enumerate(self.nodes[:-1]):
+            # calculate the distance from this node to the next
+            distance += distance_matrix[node][self.nodes[index+1]]
+            capacity_used += weights[node]
+        return (distance, capacity_used)
+
+
+
+# DECODERS---------------------------------------------------------------------
+cpdef genes_to_routes(np.ndarray genes):
+    """translate the genes to a route given the vrp problem
+       0 is used as separator between routes"""
+    assert(genes[0] == 0)
+    assert(genes[-1] == 0)
+    cdef current_route = [0]
+    cdef all_routes = []
+    for client in genes[1:]:
+        if client == 0:
+            # end of the route
+            current_route.append(0)
+            all_routes.append(Route(np.array(current_route)))
+            current_route = [0]
+        else:
+            current_route.append(client)
+    return np.array(all_routes)
+
+cpdef np.ndarray routes_to_genes(np.ndarray routes):
+    concatenated = np.array([0])
+    for route in routes:
+        concatenated = np.concatenate((concatenated, route[1:]))
+    return concatenated
+
+
 
 
 
 # MAIN OBJECTS FOR THE GENETIC ALGORITHM
 cdef class Individual:
     """individuals upon which the evolution acts"""
-    cdef readonly np.ndarray genes
-    cdef readonly np.ndarray routes
-    def __init__(self, np.ndarray genes, np.ndarray routes):
+    # fields
+    cdef readonly int[:] genes
+    cdef readonly Route [:] routes
+    # constructor
+    def __init__(self, np.ndarray genes):
         self.genes = genes
-        self.routes = routes
-    cpdef optimize_routes(self, np.ndarray distance_matrix):
-        for route in self.routes:
-            steepest_improvement(route, distance_matrix)
-    cpdef double get_distance(self, np.ndarray distance_matrix):
-        cdef double distance = 0
-        for route in self.routes:
-            distance += route.get_distance(distance_matrix)
-        return distance
+        self.routes = genes_to_routes(genes)
+    # getters
+    def get_routes(self):
+        return self.routes
     def get_genes(self):
         return self.genes
+    # string representation
     def __str__(self):
         return str(self.genes)
     def __repr__(self):
         return self.__str__()
+    # route related methods
+    cpdef optimize_routes(self, np.ndarray distance_matrix):
+        for route in self.routes:
+            route.steepest_improvement(distance_matrix)
+        return
+    cpdef get_information(self, np.ndarray distance_matrix, np.ndarray weights):
+        """ get both the capacity and the distance used by the route"""
+        cdef np.ndarray information = np.zeros(len(self.get_routes()), dtype= ([("distance", np.float), ("capacity", np.float)]))
+        for (index, route) in enumerate(self.routes):
+            information[index] = route.get_information(distance_matrix, weights)
+        return information
 
 
 cdef class Population:
@@ -134,42 +167,9 @@ cdef class Population:
 
 
 
-
-# MAIN FUNCTIONS
-cpdef np.ndarray genes_to_route(route, weights, max_capacity):
-    """translate the genes to a route given the vrp problem based on 
-    the push forward heuristic (solomon)"""
-
-    solution = [0]
-    all_routes = []
-    cdef double current_weight = 0
-    cdef double client_weight
-    cdef double total_weight
-    for elem in route:
-        client_weight = weights[elem]
-        total_weight = client_weight + current_weight
-        # case 1: too big to fit on current solution
-        if total_weight > max_capacity:
-            current_weight = client_weight
-            solution.append(0)
-            all_routes.append(Route(np.array(solution)))
-            solution = [0, elem]
-        # case 2: fits exactly right
-        elif total_weight == max_capacity:
-            current_weight = 0
-            solution.append(elem)
-            solution.append(0)
-            all_routes.append(Route(np.array(solution)))
-            solution = [0]
-        # case 3: still space left
-        else:
-            current_weight = total_weight
-            solution.append(elem)
-    if solution != [0]: # still a route in construction
-        solution.append(0)
-        all_routes.append(Route(np.array(solution)))
-    return np.array(all_routes)
-
+# GENETIC OPERATORS------------------------------------------------------------
+cpdef BRBAX(Individual parent1, Individual parent2, int num_separators):
+    pass
 
 """solving the CVRP using the strategy outlined in "Optimised crossover genetic
 algoritm for capacited vehicule routing problem" by Nazif and Lee, 2012 """
@@ -180,24 +180,43 @@ cpdef Population initialize_population(int pop_size, int num_clients, weights, m
     pop = []
     for i in range(pop_size):
         genes = np.random.permutation(np.arange(1, num_clients))
-        route = genes_to_route(genes, weights, max_capacity)
+        route = genes_to_routes(genes)
         pop.append(Individual(genes, route))
     return Population(np.array(pop))
 
 
 
-cpdef ga_optimize(int population_size,
-                  int num_generations,
-                  initialize_population,
-                  evaluate_solution,
-                  selection,
-                  crossover,
-                  mutate,
-                  apply_elitism):
-    cdef Population population = initialize_population()
-    cdef Population hall_of_fame
+cpdef np.ndarray evaluate_population(Population pop, int pop_size, fitness_function):
+    """apply the fitness function over all the individuals"""
+    cdef np.ndarray scores = np.zeros(len(pop_size))
+    for (i, ind) in enumerate(pop.get_individuals()):
+        scores[i] = fitness_function(ind)
+    return scores
+
+cpdef np.ndarray selection(Population pop, int num_to_select, tournament_function):
+    selected = []
+    for _ in range(num_to_select):
+        selected.append(tournament_function(pop))
+    return np.array(selected)
+
+
+
+  
+#cpdef ga_optimize(int population_size,
+                  #int num_generations,
+                  #initialize_population,
+                  #evaluate_solution,
+                  #selection,
+                  #crossover,
+                  #mutate,
+                  #apply_elitism):
+    #cdef Population population = initialize_population()
+    #cdef Population hall_of_fame
     
-    return
+    #for generation_index in range(num_generations):
+        
+    
+    #return
 
 
 # pseudo code view of the whole process from the article
