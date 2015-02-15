@@ -3,15 +3,16 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 
-def show_problem(points):
-    """returns a handle on a plt figure"""
-    depot = points[0]
-    clients = points[1:]
-    f = plt.figure()
-    ax = f.add_subplot(111)
-    ax.plot(depot['x'], depot['y'], 'o', color='r')
-    ax.plot(clients['x'], clients['y'], 'o', color='b')
-    return f
+
+#def show_problem(points):
+    #"""returns a handle on a plt figure"""
+    #depot = points[0]
+    #clients = points[1:]
+    #f = plt.figure()
+    #ax = f.add_subplot(111)
+    #ax.plot(depot['x'], depot['y'], 'o', color='r')
+    #ax.plot(clients['x'], clients['y'], 'o', color='b')
+    #return f
 
 
 def show_routes(coordinates, routes):
@@ -33,29 +34,29 @@ def show_routes(coordinates, routes):
     return
 
 
-def show_hull(coordinates, hull_coordinates):
-    f = plt.figure()
-    ax=f.add_subplot(111)
+#def show_hull(coordinates, hull_coordinates):
+    #f = plt.figure()
+    #ax=f.add_subplot(111)
     
-    ax.scatter(coordinates['x'], coordinates['y'])
-    for i in hull_coordinates:
-        ax.scatter(i['x'], i['y'], color='green')
-    plt.show()
+    #ax.scatter(coordinates['x'], coordinates['y'])
+    #for i in hull_coordinates:
+        #ax.scatter(i['x'], i['y'], color='green')
+    #plt.show()
 
 
-def highlight_points(ax, x, y, color):
-    ax.scatter(x, y, 'o', color=color)
-    return
+#def highlight_points(ax, x, y, color):
+    #ax.scatter(x, y, 'o', color=color)
+    #return
   
 ## from stackoverflow
-import numpy as np
-import matplotlib.pyplot as plt
+#import numpy as np
+#import matplotlib.pyplot as plt
 
-plt.axis([0, 1000, 0, 1])
-plt.ion()
-plt.show()
+#plt.axis([0, 1000, 0, 1])
+#plt.ion()
+#plt.show()
 
-for i in range(1000):
-    y = np.random.random()
-    plt.scatter(i, y)
-    plt.pause(0.01)
+#for i in range(1000):
+    #y = np.random.random()
+    #plt.scatter(i, y)
+    #plt.pause(0.01)

@@ -1,4 +1,4 @@
-"""vehicule routing problem main description (general data holder)"""
+"""vehicle routing problem main description (general data holder)"""
 
 import csv
 import cython
@@ -36,17 +36,18 @@ cpdef np.ndarray get_distance_matrix(client_positions):
 cdef class CVRPProblem:
     """data for the constrained vrp problem"""
 
-    cdef double vehicule_capacity
-    cdef np.ndarray positions
-    cdef np.ndarray weights
-    cdef str problem_name
-    cdef np.ndarray distance_matrix
+    cdef readonly double vehicle_capacity
+    cdef readonly np.ndarray positions
+    cdef readonly np.ndarray weights
+    cdef readonly str problem_name
+    cdef readonly np.ndarray distance_matrix
+    cdef readonly int num_clients
     
     def __init__(self, data_table, problem_name=""):
-        self.vehicule_capacity = float(data_table[0][1])
-        num_clients = int(data_table[0][0])
-        self.positions = np.zeros(num_clients+1, dtype=[("x", float), ("y", float), ('id', int)])
-        self.weights = np.zeros(num_clients+1)
+        self.vehicle_capacity = float(data_table[0][1])
+        self.num_clients = int(data_table[0][0])
+        self.positions = np.zeros(self.num_clients+1, dtype=[("x", float), ("y", float), ('id', int)])
+        self.weights = np.zeros(self.num_clients+1)
         self.positions[0] = (float(data_table[1][0]), float(data_table[1][1]), 0)
         for (i, (x_coord, y_coord, capacity)) in enumerate(data_table[2:]):
             self.positions[i+1] = (float(x_coord), float(y_coord), i+1)
@@ -54,8 +55,8 @@ cdef class CVRPProblem:
         self.problem_name = problem_name
         self.distance_matrix = get_distance_matrix(self.positions)
     
-    def get_vehicule_capacity(self):
-        return self.vehicule_capacity
+    def get_vehicle_capacity(self):
+        return self.vehicle_capacity
     
     def get_positions(self):
         return self.positions
@@ -66,8 +67,12 @@ cdef class CVRPProblem:
     def get_distance_matrix(self):
         return self.distance_matrix
     
+    def get_num_clients(self):
+        """return the number of clients in the problem"""
+        return self.num_clients
+    
     def __str__(self):
-        return "{0}\nConstrained Vehicule Routing Problem (CVRP)\n{1} clients, Q = {2}\n".format(self.problem_name, self.distance_matrix.shape[0]-1, self.vehicule_capacity)
+        return "{0}\nConstrained Vehicule Routing Problem (CVRP)\n{1} clients, Q = {2}\n".format(self.problem_name, self.num_clients, self.vehicle_capacity)
     
     def __repr__(self):
         return self.__str__()

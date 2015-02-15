@@ -1,18 +1,52 @@
+
+#------------------------------------------------------------------------------
+# setup
+%pylab
 import pyximport
 import numpy as np
 pyximport.install(reload_support=True)
 
-import simple_ga, cvrp
+import ga_solver
+import cvrp
 
 data=cvrp.read_vrp("lit_instances/vrp_50.txt")
 prob = cvrp.CVRPProblem(data)
-
-route1 = simple_ga.Route (np.array([0,1,2,3,4,5,0]))
-route2 = simple_ga.Route(np.array([0,1,3,2,5,4,0]))
-route3 = simple_ga.Route(np.array([0,1,2,3,0]))
+#------------------------------------------------------------------------------
 
 
 
+
+# graphics stuff
+import matplotlib.pyplot as plt
+import matplotlib
+
+def show_routes(coordinates, routes):
+    # plot the clients
+    plt.scatter(coordinates[1:]['x'], coordinates[1:]['y']) # 
+    plt.scatter(coordinates[0]['x'], coordinates[0]['y'], marker='s', color='r') # depot
+    cmap = matplotlib.cm.Set1
+    
+    # plot the routes
+    num_routes = len(routes)
+    for (route_index, route) in enumerate(routes):
+        path = np.zeros(len(route.get_nodes()-1), dtype=[("x", float), ("y", float)])
+        for (i, e) in enumerate(route.get_nodes()):
+            path[i] = coordinates[e]
+        plt.plot(path['x'], path['y'], color=cmap(route_index / float(num_routes)))
+    
+    # show the plot
+    plt.show()
+    return
+
+
+
+#------------------------------------------------------------------------------
+
+num_vehicles = ga_solver.approx_num_vehicles(prob.get_weights(), prob.get_vehicle_capacity())
+num_clients = prob.get_num_clients()
+
+pop = ga_solver.initialize_population(1, num_clients, num_vehicles)
+ind = pop[0]
 
 
 def test_random_routes(nroutes, prob):
