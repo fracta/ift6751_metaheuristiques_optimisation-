@@ -1,7 +1,6 @@
 """vehicle routing problem main description (general data holder)"""
 
 import csv
-import cython
 import numpy as np
 cimport numpy as np
 
@@ -35,14 +34,13 @@ cpdef np.ndarray get_distance_matrix(client_positions):
 
 cdef class CVRPProblem:
     """data for the constrained vrp problem"""
-
     cdef readonly double vehicle_capacity
     cdef readonly np.ndarray positions
     cdef readonly np.ndarray weights
     cdef readonly str problem_name
     cdef readonly np.ndarray distance_matrix
     cdef readonly int num_clients
-    
+
     def __init__(self, data_table, problem_name=""):
         self.vehicle_capacity = float(data_table[0][1])
         self.num_clients = int(data_table[0][0])
@@ -54,27 +52,36 @@ cdef class CVRPProblem:
             self.weights[i+1] = float(capacity)
         self.problem_name = problem_name
         self.distance_matrix = get_distance_matrix(self.positions)
-    
+
     def get_vehicle_capacity(self):
         return self.vehicle_capacity
-    
+
     def get_positions(self):
         return self.positions
-    
+
     def get_weights(self):
         return self.weights
-    
+
     def get_distance_matrix(self):
         return self.distance_matrix
-    
+
     def get_num_clients(self):
         """return the number of clients in the problem"""
         return self.num_clients
-    
+
     def __str__(self):
         return "{0}\nConstrained Vehicule Routing Problem (CVRP)\n{1} clients, Q = {2}\n".format(self.problem_name, self.num_clients, self.vehicle_capacity)
-    
+
     def __repr__(self):
         return self.__str__()
-    
 
+
+
+cpdef int approx_num_vehicles(np.ndarray weights, double vehicle_capacity):
+    """calculate approximate number of vehicles needed based on naive formula
+    from Graglia et al."""
+    tmp = sum(weights) / vehicle_capacity * 1.3
+    return int (np.ceil (tmp))
+
+
+__all__ = ["CVRPProblem" ,"read_vrp", "approx_num_vehicles"]
