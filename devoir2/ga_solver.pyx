@@ -313,9 +313,8 @@ cpdef list binary_tournament_selection(Population population, int num_to_select)
 ###############################################################################
 # GENETIC ALGORITHM HELPERS
 
-cpdef Population initialize_population(int pop_size, int num_clients, int num_vehicles, seed=42):
+cpdef Population initialize_population(int pop_size, int num_clients, int num_vehicles):
     """use numpy random permutation for the sequence of client visit"""
-    np.random.seed(seed)
     pop = []
     for _ in range(pop_size):
         clients_and_splitters = np.concatenate((np.zeros(num_vehicles-1, dtype=int), np.arange(1, num_clients+1)))
@@ -355,8 +354,7 @@ cpdef solve(problem,
             int num_generations,
             int opt_step=75,
             double recombination_prob=0.65,
-            double mutation_prob=0.1,
-            int seed=42):
+            double mutation_prob=0.1):
     """solve the cvrp problem using a simple genetic algorithm"""
 
     cdef int num_vehicles = approx_num_vehicles(problem.weights,
@@ -369,7 +367,8 @@ cpdef solve(problem,
 
     # start the loop
     for generation_index in range(num_generations):
-        print generation_index
+        if generation_index%25 == 0:
+            print generation_index
 
         current_best_index = 0
         current_best_score = np.inf
@@ -406,6 +405,7 @@ cpdef solve(problem,
 
         population = Population(np.array(children))
 
+    tmp_scores = []
     for individual in population.individuals:
         # optimize the routes and assign the new scores
         optimize_routes(individual, problem.distance_matrix)
@@ -413,6 +413,9 @@ cpdef solve(problem,
                                            problem.vehicle_capacity,
                                            problem.distance_matrix,
                                            problem.weights)
+        tmp_scores.append(individual.score)
+    # add the last generation's best to the best_individuals
+    best_individuals.append(population.individuals[np.argmin(tmp_scores)])
     return population, best_individuals
 
 

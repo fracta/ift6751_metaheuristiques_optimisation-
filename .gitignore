@@ -61,5 +61,5 @@ target/
 # kate tmp file
 *.swp
 
-# quasirandom stuff
-current_year/devoir2/quasirandom/*
+# don't save ipython notebook savepoints
+*.ipynb_checkpoints*
