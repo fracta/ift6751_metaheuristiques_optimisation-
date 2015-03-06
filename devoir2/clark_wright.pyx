@@ -161,5 +161,22 @@ cdef class Solution:
         return self.__str__()
 
 
+cpdef get_route_information(Route route,
+                            np.ndarray distance_matrix,
+                            np.ndarray weights):
+    """calculate the distance and the capacity used by the route"""
+    cdef double distance = 0.
+    cdef double capacity_used = 0.
+    for (index, node) in enumerate(route.nodes[:-1]):
+        # calculate the distance from this node to the next
+        distance += distance_matrix[node][route.nodes[index+1]]
+        capacity_used += weights[node]
+    return (distance, capacity_used)
 
 
+cpdef get_score(list routes, distance_matrix, weights):
+    res = []
+    for route in routes:
+        res.append(get_route_information(route, distance_matrix, weights))
+    return res
+    
