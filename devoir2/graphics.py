@@ -20,15 +20,15 @@ def show_routes(coordinates, routes):
     plt.scatter(coordinates[1:]['x'], coordinates[1:]['y']) # 
     plt.scatter(coordinates[0]['x'], coordinates[0]['y'], marker='s', color='r') # depot
     cmap = matplotlib.cm.Set1
-    
+
     # plot the routes
     num_routes = len(routes)
     for (route_index, route) in enumerate(routes):
-        path = np.zeros(len(route.get_nodes()-1), dtype=[("x", float), ("y", float)])
-        for (i, e) in enumerate(route.get_nodes()):
+        path = np.zeros(len(route.nodes), dtype=[("x", float), ("y", float)])
+        for (i, e) in enumerate(route.nodes):
             path[i] = coordinates[e]
         plt.plot(path['x'], path['y'], color=cmap(route_index / float(num_routes)))
-    
+
     # show the plot
     plt.show()
     return

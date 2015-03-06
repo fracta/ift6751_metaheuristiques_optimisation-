@@ -14,14 +14,16 @@ cdef class Route:
        routes are separated by a chosen symbol
        in this case, the depot"""
     cpdef readonly list nodes
+    cpdef readonly weight
 
-    def __init__(self, list nodes):
+    def __init__(self, list nodes, weight):
         assert(nodes[0] == 0)
         assert(nodes[-1]== 0)
         assert(len(nodes) > 1), "depot to depot routes are allowed"
         for i in range(1, len(nodes)-1):
             assert(i != 0)
         self.nodes = nodes
+        self.weight = weight
 
     def __getitem__(self, index):
         return self.nodes[index]
@@ -34,37 +36,65 @@ cdef class Route:
         return self.__str__()
 
 
-cpdef get_route_information(Route route,
-                            np.ndarray distance_matrix,
-                            np.ndarray weights):
-    """calculate the distance and the capacity used by the route"""
-    cdef double distance = 0.
-    cdef double capacity_used = 0.
-    for (index, node) in enumerate(route.nodes[:-1]):
-        # calculate the distance from this node to the next
-        distance += distance_matrix[node][route.nodes[index+1]]
-        capacity_used += weights[node]
-    return (distance, capacity_used)
-
-
-cpdef double distance_savings(Route route1, Route route2, np.ndarray distance_matrix):
+cpdef double distance_savings(Route route1, Route route2,
+                              np.ndarray distance_matrix,
+                              double route_capacity):
     """compute the Clark & Wright distance savings"""
     # s_i,j = c_i0 + c0j - \cij
-    return distance_matrix[route1[-2], 0] + distance_matrix[0, route2[-2]] - distance_matrix[route1[-2], route2[-2]]
+    if route1.nodes == route2.nodes:  # any route with itself is not feasable
+        return -np.inf
+    elif route1.weight + route2.weight > route_capacity:  # any route that exceeds cap is not feasable
+        return -np.inf
+    else:
+        return distance_matrix[route1[-2], 0] + distance_matrix[0, route2[-2]] - distance_matrix[route1[-2], route2[-2]]
 
 
-cpdef solve_cw_parallel(cvrp_problem):
+cpdef Route merge_routes(Route route1, Route route2):
+    """merge two roads, taking the first one and concatenating the second"""
+    cdef list concatenated = route1[0:-1]
+    concatenated.extend(route2[1:])
+    return Route(concatenated, route1.weight + route2.weight)
+
+
+cpdef list cw_parallel(cvrp_problem):
     """solve the cvrp problem using the original clark & wright parallel heuristic"""
-    
-    routes = [Route([0, i, 0]) for i in range(1, cvrp_problem.num_clients)]
+    routes = [Route([0, i, 0], cvrp_problem.weights[i]) for i in range(1, cvrp_problem.num_clients+1)]
+    # calculate all the savings!
+    savings = np.zeros((len(routes), len(routes)), dtype=float)
+    for index1, route1 in enumerate(routes):
+        for index2, route2 in enumerate(routes):
+            if index1 == index2:
+                savings[index1][index2] = -np.inf
+            else:
+                savings[index1][index2] = distance_savings(route1, route2, cvrp_problem.distance_matrix, cvrp_problem.vehicle_capacity)
 
-    # keep a list of savings
-    memoized_savings = dict()
-    for route in range(cvrp.num_clients):
-        memoized_savings = dict()
-    
-    
-    
+    # loop until no good savings left (max (savings) <= 0)
+    valid_routes = [i for i in range(len(routes))]
+    while True:
+        index1, index2 = np.unravel_index(savings.argmax(), savings.shape)
+        # stop if there is still a valid saving possible
+        if savings[index1, index2] <= 0:
+            break
+        # merge the routes
+        routes[index1] = merge_routes(routes[index1], routes[index2])
+        routes[index2] = None
+        # set the savings implicating index2 to -infinity
+        for i in range(savings.shape[0]):
+            savings[i][index2] = -np.inf
+            savings[index2][i] = -np.inf
+        valid_routes.remove(index2)
+        # recalculate all the savings implying the index1
+        for i in valid_routes:
+            savings[i][index1] = distance_savings(routes[i], routes[index1], cvrp_problem.distance_matrix, cvrp_problem.vehicle_capacity)
+            savings[index1][i] = distance_savings(routes[index1], routes[i], cvrp_problem.distance_matrix, cvrp_problem.vehicle_capacity)
+
+   # remove the non-routes (None) from the route list
+    result = []
+    for route_index in valid_routes:
+        result.append(routes[route_index])
+    return result
+
+
 ###############################################################################
 # LOCAL OPTIMIZATION METHOD FOR ROUTE
 
@@ -72,7 +102,7 @@ cpdef two_opt(route, int ind1, int ind3):
     """2-opt procedure for local optimization"""
     assert(ind1 != ind3 and ind1 + 1 != ind3)
     assert(ind1 < ind3)
-    cdef np.ndarray rev = route.nodes[ind1+1:ind3+1]
+    rev = route.nodes[ind1+1:ind3+1]
     rev = rev[::-1]
     route.nodes[ind1+1:ind3+1] = rev
     return
@@ -112,37 +142,6 @@ cpdef steepest_improvement(route, np.ndarray distance_matrix):
     return
 
 
-
-###############################################################################
-# ROUTES -> GENES, GENES -> ROUTES CONVERTERS
-
-cpdef np.ndarray genes_to_routes(np.ndarray genes):
-    """GENES -> ROUTES
-       0 is used as separator between routes"""
-    assert(genes[0] == 0)
-    assert(genes[-1] == 0)
-    cdef current_route = [0]
-    cdef all_routes = []
-    for client in genes[1:]:
-        if client == 0:
-            # end of the route
-            current_route.append(0)
-            all_routes.append(Route(np.array(current_route)))
-            current_route = [0]
-        else:
-            current_route.append(client)
-    return np.array(all_routes)
-
-
-cpdef np.ndarray routes_to_genes(routes):
-    """ROUTES -> GENES"""
-    concatenated = np.array([0])
-    for route in routes:
-        concatenated = np.concatenate((concatenated, route[1:]))
-    return concatenated
-
-
-
 ###############################################################################
 # INDIVIDUALS USED IN THE GENETIC ALGORITHM
 
@@ -163,23 +162,4 @@ cdef class Solution:
 
 
 
-cpdef np.ndarray get_individual_information(Solution individual,
-                                            np.ndarray distance_matrix,
-                                            np.ndarray weights):
-    """get both the capacity and the distance used by the route"""
-    cdef np.ndarray information = np.zeros(len(individual.routes),
-         dtype= ([("distance", np.float), ("capacity", np.float)]))
 
-    for (index, route) in enumerate(individual.routes):
-        information[index] = get_route_information(route, distance_matrix, weights)
-    return information
-
-
-cpdef optimize_routes(Solution individual,
-                      np.ndarray distance_matrix):
-    """optimize the routes using steepest improvement"""
-    for route in individual.routes:
-        steepest_improvement(route, distance_matrix)
-
-    individual.genes = routes_to_genes(individual.routes)
-    return
