@@ -6,6 +6,9 @@ cimport numpy as np
 import cvrp
 
 
+# generate high quality routes to feed in the genetic algorithm
+
+
 ###############################################################################
 # ROUTE OBJECT
 
@@ -41,7 +44,9 @@ cpdef double distance_savings(Route route1, Route route2,
                               double route_capacity):
     """compute the Clark & Wright distance savings"""
     # s_i,j = c_i0 + c0j - \cij
-    if route1.nodes == route2.nodes:  # any route with itself is not feasable
+    if route1 == None or route2 == None:
+        return -np.inf
+    elif route1.nodes == route2.nodes:  # any route with itself is not feasable
         return -np.inf
     elif route1.weight + route2.weight > route_capacity:  # any route that exceeds cap is not feasable
         return -np.inf
@@ -56,20 +61,30 @@ cpdef Route merge_routes(Route route1, Route route2):
     return Route(concatenated, route1.weight + route2.weight)
 
 
-cpdef list cw_parallel(cvrp_problem):
-    """solve the cvrp problem using the original clark & wright parallel heuristic"""
-    routes = [Route([0, i, 0], cvrp_problem.weights[i]) for i in range(1, cvrp_problem.num_clients+1)]
-    # calculate all the savings!
-    savings = np.zeros((len(routes), len(routes)), dtype=float)
+cpdef calculate_savings(list routes,
+                        np.ndarray distance_matrix,
+                        np.ndarray savings_matrix,
+                        double vehicle_capacity):
+    """ """
+    assert(savings_matrix.shape[0] == len(routes) and savings_matrix.shape[1] == len(routes)), "wrong dimensionality for distance matrix"
     for index1, route1 in enumerate(routes):
         for index2, route2 in enumerate(routes):
-            if index1 == index2:
-                savings[index1][index2] = -np.inf
-            else:
-                savings[index1][index2] = distance_savings(route1, route2, cvrp_problem.distance_matrix, cvrp_problem.vehicle_capacity)
+            savings_matrix[index1, index2] = distance_savings(route1, route2, distance_matrix, vehicle_capacity)
+    return
+
+
+
+
+
+cpdef list cw_parallel(routes, np.ndarray distance_matrix, np.ndarray weights, double vehicle_capacity):
+    """solve the cvrp problem using the original clark & wright parallel heuristic"""
+
+    # calculate all the savings!
+    savings = np.zeros((len(routes), len(routes)), dtype=float)
+    calculate_savings(routes, distance_matrix, savings, vehicle_capacity)
 
     # loop until no good savings left (max (savings) <= 0)
-    valid_routes = [i for i in range(len(routes))]
+    valid_routes = [i for i in range(len(routes)) if routes[i] != None]
     while True:
         index1, index2 = np.unravel_index(savings.argmax(), savings.shape)
         # stop if there is still a valid saving possible
@@ -85,8 +100,8 @@ cpdef list cw_parallel(cvrp_problem):
         valid_routes.remove(index2)
         # recalculate all the savings implying the index1
         for i in valid_routes:
-            savings[i][index1] = distance_savings(routes[i], routes[index1], cvrp_problem.distance_matrix, cvrp_problem.vehicle_capacity)
-            savings[index1][i] = distance_savings(routes[index1], routes[i], cvrp_problem.distance_matrix, cvrp_problem.vehicle_capacity)
+            savings[i][index1] = distance_savings(routes[i], routes[index1], distance_matrix, vehicle_capacity)
+            savings[index1][i] = distance_savings(routes[index1], routes[i], distance_matrix, vehicle_capacity)
 
    # remove the non-routes (None) from the route list
     result = []
