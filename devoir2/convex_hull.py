@@ -3,22 +3,13 @@
 import numpy as np
 
 def convex_hull(points):
-    """Computes the convex hull of a set of 2D points.
- 
-    Input: an iterable sequence of (x, y) pairs representing the points.
-    Output: a list of vertices of the convex hull in counter-clockwise order,
-      starting from the vertex with the lexicographically smallest coordinates.
-    Implements Andrew's monotone chain algorithm. O(n log n) complexity.
-    """
-    
-    # Boring case: no points or a single point, possibly repeated multiple times.
+    """Computes the convex hull of a set of 2D points."""
+
     if len(points) <= 1:
             return points
-    
-    # Sort the points lexicographically (tuples are compared lexicographically).
-    # Remove duplicates to detect the case we have just one unique point.
+
     points = np.sort(points)
-  
+
     # 2D cross product of OA and OB vectors, i.e. z-component of their 3D cross product.
     # Returns a positive value, if OAB makes a counter-clockwise turn,
     # negative for clockwise turn, and zero if the points are collinear.
@@ -41,9 +32,15 @@ def convex_hull(points):
  
     # Concatenation of the lower and upper hulls gives the convex hull.
     # Last point of each list is omitted because it is repeated at the beginning of the other list.
-    result = np.array(lower[:-1] + upper[:-1],dtype=[("x", float), ("y", float), ('id', int)])
+    result = np.array(lower[:-1] + upper[:-1], dtype=[("x", float), ("y", float), ('id', int)])
     return result
  
  
 # Example: convex hull of a 10-by-10 grid.
-assert convex_hull([(i/10, i%10) for i in range(100)]) == [(0, 0), (9, 0), (9, 9), (0, 9)]
+#assert convex_hull([(i/10, i%10) for i in range(100)]) == [(0, 0), (9, 0), (9, 9), (0, 9)]
+
+
+def find_best_permutation(points, distance_matrix):
+    """find the best permutation possible, taking into account the convex hull"""
+    # only allow permutation of points not belonging to the convex hull
+    pass

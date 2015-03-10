@@ -4,8 +4,8 @@ import numpy as np
 cimport numpy as np
 
 import copy
-import cvrp
 
+import cvrp
 
 cpdef int approx_num_vehicles(np.ndarray weights, double vehicle_capacity):
     """calculate approximate number of vehicles needed based on naive formula
