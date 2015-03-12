@@ -6,7 +6,6 @@ cimport numpy as np
 import copy
 
 import cvrp
-cimport cvrp
 
 
 cdef class Route:
@@ -38,6 +37,8 @@ cdef class Route:
     def insert(self, int position, int client):
         self.nodes.insert(position, client)
         return
+    def get_copy(self):
+        return Route(self.nodes)
 
 
 cpdef get_route_information(Route route,
@@ -108,7 +109,7 @@ cpdef steepest_improvement(route, np.ndarray distance_matrix):
 # (1, 0): client insertion, basically like CW savings
 
 
-cpdef void neighborhood_insert(Route route1, Route route2):
+cpdef tuple (Route route1, Route route2):
     """go through every possible neighbors"""
     # find the 
     

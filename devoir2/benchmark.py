@@ -1,12 +1,13 @@
 """graphic benchmark for the homework (comparison to best know solutions"""
 
-
-# GRAPHIC
-
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 
-def get_route_information(Route route, distance_matrix, weights):
+
+# GRAPHICS
+
+def get_route_information(route, distance_matrix, weights):
     distance = 0.
     capacity_used = 0.
     for (index, node) in enumerate(route.nodes[:-1]):
@@ -18,24 +19,52 @@ def get_route_information(Route route, distance_matrix, weights):
 
 def print_solution(client_positions, distance_matrix, weights, routes):
     """print a cvrp solution with route annotation"""
-    route_information = [get_route_information(i, distance_matrix, weights) for i in routes]
-    
+    routes_zipped = zip(routes, [get_route_information(i, distance_matrix, weights) for i in routes])
+    routes_zipped = sorted(routes_zipped, key=lambda x: x[1][0])
+    routes, route_information = zip(*routes_zipped) 
+    total_dist = sum(map(lambda x:x[0], route_information))
+    max_dist = max(map(lambda x:x[0], route_information))
+
     plt.figure(figsize=(15, 10))
-    plt.title("total score = {0} with {1} routes".format(score, len(routes)))
+    plt.title("Solved with {} routes, total distance of {:.2f}".format(len(routes), total_dist))
     plt.scatter(client_positions[1:]['x'], client_positions[1:]['y']) # clients
     plt.scatter(client_positions[0]['x'], client_positions[0]['y'], marker='s', color='r') # depot
-    
+
     # plot the routes
-    cmap = matplotlib.cm.Blues
-    num_routes = len(routes)
+    cmap = matplotlib.cm.Set1
     for (route_index, route) in enumerate(routes):
-        path = np.zeros(len(route.nodes-1), dtype=[("x", float), ("y", float)])
+        if route_information[route_index][0] == 0:
+            continue
+        path = np.zeros(len(route.nodes), dtype=[("x", float), ("y", float)])
         for (i, e) in enumerate(route.nodes):
             path[i] = client_positions[e]
-        plt.plot(path['x'], path['y'], color=cmap(route_index / float(num_routes)), label="{dist = {0}, cap = {1}".format(route_information[i][0], route_information[i][1]))
-
+        plt.plot(path['x'], path['y'], label="{:10.2f}; {}".format(route_information[route_index][0], int(route_information[route_index][1])))
+    plt.legend()
     plt.show()
     return
 
-christofides = ["vrpnc"+str(i) for i [1, 2, 3, 4, 5, 11, 12]]
+def get_distance(solution, distance_matrix, weights):
+    total_distance = 0.
+    for route in solution:
+        dist, cap = get_route_information(route, distance_matrix, weights)
+        total_distance += dist
+    return total_distance
+
+# BENCHMARKING
+
+best_known = {
+"vrpnc1" : 524.61,
+"vrpnc2" : 835.26,
+"vrpnc3" : 826.14,
+"vrpnc4" : 1028.42,
+"vrpnc5" : 1291.29,
+"vrpnc11" : 1042.11,
+"vrpnc12" : 819.56,
+}
+
+
+def percentage_of_score(score, best_known):
+    """returns the percentage of best known score"""
+    return (score - best_known) / best_known
+
 

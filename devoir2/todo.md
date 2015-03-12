@@ -3,7 +3,7 @@
 - recombination operator
     - use the proposed improved one from A Comparison of Recombination Operators for Capacitate Vehicle Routing Problem
 
-
+- fix the BRBAX steepest improvement
 
 
 # Tabu Search
