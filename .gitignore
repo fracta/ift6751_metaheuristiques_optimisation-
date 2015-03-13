@@ -63,3 +63,6 @@ target/
 
 # don't save ipython notebook savepoints
 *.ipynb_checkpoints*
+
+# profiler files
+*.prof
