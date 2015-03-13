@@ -2,6 +2,7 @@
 
 # used in both tabu and genetic algorithm solver
 
+import routes
 
 cdef class Solution:
     """a solution to the cvrp problem"""
@@ -31,3 +32,12 @@ cdef class Solution:
 
     cpdef Solution copy(Solution self):
         return Solution(self.routes, self.score)
+
+
+cpdef list get_information(Solution sol, np.ndarray distance_matrix):
+    """returns [(distance, weight) for route in sol.routes]"""
+    cdef list information = np.empty(len(sol.routes), dtype=[('dist', float),('cap', float)])
+    cdef int index
+    for index in range(len(sol.routes)):
+        information[index] = routes.get_information(route, distance_matrix)
+    return information

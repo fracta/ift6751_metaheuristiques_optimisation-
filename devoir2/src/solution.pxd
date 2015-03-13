@@ -1,5 +1,6 @@
 """declarations for solution to cvrp problem"""
 
+cimport numpy as np
 
 cdef class Solution:
     """a solution to the cvrp problem"""

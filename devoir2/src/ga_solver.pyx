@@ -35,49 +35,52 @@ cpdef np.ndarray routes_to_genes(routes):
     return concatenated
 
 
+cpdef set find_unserved_clients(list routes, int num_clients):
+    assert(num_clients > 0)
+    cdef set clients = set(np.arange(1, num_clients+1))
+    cdef set served_clients = set()
+    for route in routes:
+        served_clients = served_clients.union(set(route.nodes))
+    return all.difference(served_clients)
 
 
-
-
-cpdef Solution BRBAX(Solution parent1, Solution parent2,
-                       np.ndarray route_info,
-                       double target_capacity):
+cpdef Solution BRBAX(cvrp_problem,
+                     Solution parent1, Solution parent2,
+                     np.ndarray route_info,
+                     int num_clients):
     """"Optimised crossover genetic algoritm for capacited vehicle routing problem"
-     by Nazif and Lee, 2012"""
+     by Nazif and Lee, 2012, modified with the power of savings tm"""
 
     # select m / 2 best routes from parent 1, by best we mean the ones having
     # that have the least discrepancy with the capacity limit
     cdef int to_select = np.round(len(parent1.routes)/2.)
 
-    abs_capacity_difference = np.abs(np.subtract(route_info["capacity"], target_capacity))
-    indices = np.argpartition(abs_capacity_difference, to_select)[: to_select]
-    selected_routes = parent1.routes[indices]
-    selected_genes = routes_to_genes(selected_routes)
-    to_add = []
-    # don't add separators for nothing
-    separator_counter =  to_select + 1
-    for client in parent2.genes:
-        if client == 0 and separator_counter > 0:
-            separator_counter -= 1
-        elif client == 0 and separator_counter == 0:
-            to_add.append(0)
-        elif not client in selected_genes:
-            to_add.append(client)
-    child_genes = np.concatenate((selected_genes, to_add))
-    return Solution(child_genes)
+    cdef np.ndarray capacity_difference = np.abs(np.subtract(route_info["cap"],
+                                                             cvrp_problem.vehicle_capacity))
+    cdef list inherited_routes = parent1.routes[np.argpartition(abs_capacity_difference, to_select)[: to_select]]
+
+    # let's reassemble the rest of the routes with savings :)
+    cdef list unserved_clients = sorted(find_unserved_clients(inherited_routes, cvrp_problem.num_clients))
+    cdef list new_routes = [Route([0, i, 0], cvrp_problem.weights[i]) for i in range(1, cvrp_problem.num_clients+1)]
+    cdef list remaining_routes = clark_wright.cw_parallel(new_routes,
+                                                          cvrp_problem.distance_matrix,
+                                                          cvrp_problem.vehicle_capacity)
+
+    # concatenate the routes
+    return Solution(inherited_routes.extend(remaining_routes))
 
 
 
-cpdef mutate(Solution ind):
-    """insertion mutation operator (Graglia et al.)"""
-    cdef int swap1 = np.random.randint(1, len(ind.genes)-1)
-    cdef int swap2 = np.random.randint(1, len(ind.genes)-1)
-    tmp = ind.genes[swap2]
-    ind.genes[swap2] = ind.genes[swap1]
-    ind.genes[swap1] = tmp
-    # update routes
-    ind.routes = genes_to_routes(ind.genes)
-    return
+#cpdef mutate(Solution ind):
+    #"""insertion mutation operator (Graglia et al.)"""
+    #cdef int swap1 = np.random.randint(1, len(ind.genes)-1)
+    #cdef int swap2 = np.random.randint(1, len(ind.genes)-1)
+    #tmp = ind.genes[swap2]
+    #ind.genes[swap2] = ind.genes[swap1]
+    #ind.genes[swap1] = tmp
+    ## update routes
+    #ind.routes = genes_to_routes(ind.genes)
+    #return
 
 
 cdef tuple select_2(int low, int high):
@@ -107,32 +110,27 @@ cpdef list binary_tournament_selection(Population population, int num_to_select)
     return selected
 
 
-cpdef Population initialize_population(cvrp_problem, int pop_size, int k, int seed=42):
+cpdef list initialize_population(cvrp_problem, int pop_size, int k):
     """use Clark & Wright with random choice (up to k worst) to initialize"""
     assert(pop_size > 0)
-    np.random.seed(seed)
+    assert(k > 0)
+
     # let's extract a few variables from the problem settings
     cdef np.ndarray distance_matrix = cvrp_problem.distance_matrix
     cdef np.ndarray weights = cvrp_problem.weights
 
-    cdef list routes = [Route([0, i, 0], prob.weights[i]) for i in range(1, prob.num_clients+1)]
+    cdef list routes = [Route([0, i, 0], prob.weights[i]) for i in range(1, cvrp_problem.num_clients+1)]
     cdef list individuals_list = []
 
     # add the "best" clark wright solution (the one that selects only the best saving)
+    # the calculation should quite fast (about a quarter as small, maybe more)
     individuals_list.append(clark_wright.cw_parallel(routes, cvrp_problem.distance_matrix, cvrp_problem.vehicle_capacity))
 
     # add now, until the population is filled
     for iteration in range(pop_size - 1):
         individuals_list.append(cw_parallel_random(routes, distance_matrix, vehicle_capacity, k))
-        
-    for _ in range(pop_size):
-        clients_and_splitters = np.concatenate((np.zeros(num_vehicles-1, dtype=int), np.arange(1, num_clients+1)))
-        clients_and_splitters = np.random.permutation(clients_and_splitters)
-        # the genes start at depot and end at depot
-        genes = np.zeros(len(clients_and_splitters)+2, dtype=int)
-        genes[1:-1] = clients_and_splitters
-        pop.append(Solution(genes))
-    return Population(np.array(pop))
+
+    return individuals_list
 
 
 cpdef double calculate_score(Solution ind,
@@ -153,10 +151,6 @@ cpdef double calculate_score(Solution ind,
     score = (overcap * penalty) + total_distance
     return score
 
-
-
-###############################################################################
-# THE GENETIC ALGORITHM LOOP
 
 cpdef solve(problem,
             int population_size,

@@ -1,5 +1,5 @@
 # cython: profile=True
-"""Clark & Wright savings for the CVRP"""
+"""Clark & Wright savings for the CVRP, also used to feed into Tabu Search and Genetic Algorithm solvers"""
 
 import numpy as np
 cimport numpy as np

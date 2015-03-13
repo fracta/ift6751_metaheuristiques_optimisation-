@@ -17,7 +17,7 @@ cdef class Route:
         return self.__str__()
 
 
-cpdef tuple get_route_information(Route route,
+cpdef tuple get_information(Route route,
                                   np.ndarray distance_matrix):
     """calculate the distance and the capacity used by the route"""
     cdef double distance = 0.
