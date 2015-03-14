@@ -34,10 +34,10 @@ cdef class Solution:
         return Solution(self.routes, self.score)
 
 
-cpdef list get_information(Solution sol, np.ndarray distance_matrix):
+cpdef list get_solution_information(Solution sol, np.ndarray distance_matrix, np.ndarray weights):
     """returns [(distance, weight) for route in sol.routes]"""
-    cdef list information = np.empty(len(sol.routes), dtype=[('dist', float),('cap', float)])
+    cdef list information = np.empty(len(sol.routes), dtype=[('dist', float),('weight', float)])
     cdef int index
     for index in range(len(sol.routes)):
-        information[index] = routes.get_information(route, distance_matrix)
+        information[index] = routes.get_information(sol.routes[index], distance_matrix, weights)
     return information

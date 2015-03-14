@@ -15,7 +15,7 @@ cpdef list read_vrp(str file_problem_name):
     return data
 
 
-cpdef np.ndarray get_distance_matrix(client_positions):
+cpdef np.ndarray get_distance_matrix(np.ndarray client_positions):
     """compute the euclidean distance matrix between all points"""
     cdef int num_clients = len(client_positions)
     cdef np.ndarray matrix = np.zeros((num_clients, num_clients))
@@ -34,13 +34,6 @@ cpdef np.ndarray get_distance_matrix(client_positions):
 
 cdef class CVRPProblem:
     """data for the constrained vrp problem"""
-    cdef readonly double vehicle_capacity
-    cdef readonly np.ndarray positions
-    cdef readonly np.ndarray weights
-    cdef readonly str problem_name
-    cdef readonly np.ndarray distance_matrix
-    cdef readonly int num_clients
-
     def __init__(self, data_table, problem_name=""):
         self.vehicle_capacity = float(data_table[0][1])
         self.num_clients = int(data_table[0][0])

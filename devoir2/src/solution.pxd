@@ -25,3 +25,5 @@ cdef inline bint richcmp_helper(int compare, int op):
         return compare > 0
     elif op == 5: # >=
         return compare >= 0
+
+cpdef list get_solution_information(Solution sol, np.ndarray distance_matrix, np.ndarray weights)

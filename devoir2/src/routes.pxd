@@ -8,7 +8,7 @@ cdef class Route:
     cpdef public weight
 
 
-cpdef tuple get_route_information(Route route, np.ndarray distance_matrix)
+cpdef tuple get_information(Route route, np.ndarray distance_matrix, np.ndarray weights)
 
 
 cpdef two_opt(route, int ind1, int ind3)

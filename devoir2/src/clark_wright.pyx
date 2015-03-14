@@ -17,8 +17,8 @@ from solution import Solution
 
 
 cdef double distance_savings(Route route1, Route route2,
-                              np.ndarray distance_matrix,
-                              double route_capacity):
+                             np.ndarray distance_matrix,
+                             double route_capacity):
     """compute the Clark & Wright distance savings"""
     # s_ij = c_i0 + c_0j - c_ij
     if route1 == None or route2 == None:
