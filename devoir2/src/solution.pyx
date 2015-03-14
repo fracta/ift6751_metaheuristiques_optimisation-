@@ -2,7 +2,10 @@
 
 # used in both tabu and genetic algorithm solver
 
-import routes
+
+cimport numpy as np
+import numpy as np
+
 
 cdef class Solution:
     """a solution to the cvrp problem"""
@@ -31,13 +34,13 @@ cdef class Solution:
       return richcmp_helper(compare, op)
 
     cpdef Solution copy(Solution self):
-        return Solution(self.routes, self.score)
+        return Solution([route.copy() for route in self.routes], self.score)
 
 
-cpdef list get_solution_information(Solution sol, np.ndarray distance_matrix, np.ndarray weights):
+cpdef np.ndarray get_solution_information(Solution sol, np.ndarray distance_matrix, np.ndarray weights):
     """returns [(distance, weight) for route in sol.routes]"""
-    cdef list information = np.empty(len(sol.routes), dtype=[('dist', float),('weight', float)])
+    cdef np.ndarray information = np.empty(len(sol.routes), dtype=[('dist', float),('weight', float)])
     cdef int index
     for index in range(len(sol.routes)):
-        information[index] = routes.get_information(sol.routes[index], distance_matrix, weights)
+        information[index] = get_information(sol.routes[index], distance_matrix, weights)
     return information

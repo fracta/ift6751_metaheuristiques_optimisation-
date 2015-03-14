@@ -24,7 +24,7 @@ cpdef set find_unserved_clients(list routes, int num_clients):
     cdef set served_clients = set()
     for route in routes:
         served_clients = served_clients.union(set(route.nodes))
-    return all.difference(served_clients)
+    return clients.difference(served_clients)
 
 
 cpdef Solution BRBAX(CVRPProblem cvrp_problem,
@@ -38,7 +38,11 @@ cpdef Solution BRBAX(CVRPProblem cvrp_problem,
 
     cdef np.ndarray capacity_difference = np.abs(np.subtract(route_info["weight"],
                                                              cvrp_problem.vehicle_capacity))
-    cdef list inherited_routes = parent1.routes[np.argpartition(capacity_difference, to_select)[: to_select]]
+    cdef np.ndarray indices = np.argpartition(capacity_difference, to_select)[: to_select]
+    cdef list inherited_routes = []
+    for index in indices:
+        inherited_routes.append(parent1.routes[index])
+
 
     # let's reassemble the rest of the routes with savings :)
     cdef list unserved_clients = sorted(find_unserved_clients(inherited_routes, cvrp_problem.num_clients))
@@ -47,26 +51,27 @@ cpdef Solution BRBAX(CVRPProblem cvrp_problem,
                                                           cvrp_problem.distance_matrix,
                                                           cvrp_problem.vehicle_capacity)
     # concatenate the routes
-    return Solution(inherited_routes.extend(remaining_routes))
+    inherited_routes.extend(remaining_routes)
+    return Solution(inherited_routes)
 
 
 cpdef mutate(Solution sol, int num_clients, np.ndarray weights):
     """insertion mutation operator (Graglia et al.)"""
     cdef int route1, route2, client, insert_position
+    if len(route1.nodes) <= 3:
+        return # to avoid emptying routes
     route1, route2 = select_2(0, len(sol.routes))
 
     # remove the client and adjust the weight of the route
-    client = sol.routes[route1].pop(np.random.randint(1, len(sol.routes[route1].nodes)-1))
-    sol.routes[route1].weight -= weights[client]
+    client = sol.routes[route1].nodes.pop(np.random.randint(1, len(sol.routes[route1].nodes)-1))
 
     # insert the client and adjust the weight of the route
     insert_position = np.random.randint(1, len(sol.routes[route2].nodes)-1)
-    sol.routes[route2].insert(insert_position, client)
-    sol.routes[route2].weight += weights[client]
+    sol.routes[route2].nodes.insert(insert_position, client)
     return
 
 
-cdef tuple select_2(int low, int high):
+cpdef tuple select_2(int low, int high):
     """select 2 different random integers in the interval"""
     assert(high - 1 > low), "interval is nonsensical"
     cdef int first = np.random.randint(low, high)
@@ -82,7 +87,7 @@ cpdef list binary_tournament_selection(list population, int num_to_select):
     cdef list selected = []
     cdef int index1 = 0
     cdef int index2 = 0
-    cdef int pop_size = len(population.individuals)
+    cdef int pop_size = len(population)
     for index in range(num_to_select):
         index1, index2 = select_2(0, pop_size)
         if population[index1].score < population[index2].score:
@@ -114,19 +119,15 @@ cpdef list initialize_population(CVRPProblem cvrp_problem, int pop_size, int k):
     return solutions
 
 
-cpdef double calculate_score(Solution ind,
-                             double vehicle_capacity,
-                             np.ndarray distance_matrix,
-                             np.ndarray weights,
-                             double penalty=1000.):
+cpdef double calculate_score(Solution sol, CVRPProblem cvrp_problem, double penalty=1000.):
     """calculate the fitness based on Graglia et al."""
-    cdef np.ndarray information = get_solution_information(ind, distance_matrix, weights)
+    cdef np.ndarray information = get_solution_information(sol, cvrp_problem.distance_matrix, cvrp_problem.weights)
     cdef double overcap = 0.
     cdef double total_distance = 0.
     cdef double score
     for (distance, capacity_used) in information:
-        if capacity_used > vehicle_capacity:
-            overcap += capacity_used - vehicle_capacity
+        if capacity_used > cvrp_problem.vehicle_capacity:
+            overcap += capacity_used - cvrp_problem.vehicle_capacity
         total_distance += distance
     score = (overcap * penalty) + total_distance
     return score
@@ -162,6 +163,7 @@ cpdef solve(CVRPProblem cvrp_problem,
     cdef int i
     cdef list parents
     cdef list children
+    cdef np.ndarray p1_info
 
     for generation_index in range(num_generations):
         # output the progress bar
@@ -175,10 +177,7 @@ cpdef solve(CVRPProblem cvrp_problem,
         # score the solutions
         for index, solution in enumerate(population):
             # optimize the routes and assign the new scores
-            solution.score = calculate_score(solution,
-                                             cvrp_problem.vehicle_capacity,
-                                             cvrp_problem.distance_matrix,
-                                             cvrp_problem.weights)
+            solution.score = calculate_score(solution, cvrp_problem)
             if solution.score < current_best_score:
                 current_best_score = solution.score
                 current_best_index = index

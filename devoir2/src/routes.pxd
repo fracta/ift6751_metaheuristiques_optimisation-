@@ -6,6 +6,7 @@ cimport numpy as np
 cdef class Route:
     cpdef public list nodes
     cpdef public weight
+    cpdef copy(self)
 
 
 cpdef tuple get_information(Route route, np.ndarray distance_matrix, np.ndarray weights)

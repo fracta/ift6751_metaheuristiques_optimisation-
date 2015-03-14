@@ -1,6 +1,11 @@
 """declarations for solution to cvrp problem"""
 
 cimport numpy as np
+import numpy as np
+
+cimport routes
+from routes cimport Route, get_information
+
 
 cdef class Solution:
     """a solution to the cvrp problem"""
@@ -26,4 +31,4 @@ cdef inline bint richcmp_helper(int compare, int op):
     elif op == 5: # >=
         return compare >= 0
 
-cpdef list get_solution_information(Solution sol, np.ndarray distance_matrix, np.ndarray weights)
+cpdef np.ndarray get_solution_information(Solution sol, np.ndarray distance_matrix, np.ndarray weights)

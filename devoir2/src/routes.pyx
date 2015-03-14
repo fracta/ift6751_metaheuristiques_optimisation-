@@ -1,5 +1,6 @@
 """route and other objects for CVRP optimization"""
 
+import copy
 
 cdef class Route:
     """represents a route, sequence of integers"""
@@ -15,6 +16,8 @@ cdef class Route:
         return str(self.nodes)
     def __repr__(self):
         return self.__str__()
+    cpdef copy(self):
+        return Route(copy.copy(self.nodes), self.weight)
 
 
 cpdef tuple get_information(Route route,
