@@ -17,6 +17,18 @@ from solution cimport Solution, get_solution_information
 import progress_bar
 
 
+cpdef solution_union(Solution solution1, Solution solution2):
+    """return the biggest union of non intersecting routes between solution 1 and 2"""
+    cdef list intersection = []
+    cdef int index1, index2
+    for index1, route1 in enumerate(solution1.routes):
+        tmp = (index1, set())
+        set1 = set()
+        for index2, route2 in enumerate(solution2.routes):
+            if 
+    pass
+
+
 cpdef set find_unserved_clients(list routes, int num_clients):
     """using sets, figure out which clients are still not in a route"""
     assert(num_clients > 0)
@@ -39,17 +51,25 @@ cpdef Solution BRBAX(CVRPProblem cvrp_problem,
     cdef np.ndarray capacity_difference = np.abs(np.subtract(route_info["weight"],
                                                              cvrp_problem.vehicle_capacity))
     cdef np.ndarray indices = np.argpartition(capacity_difference, to_select)[: to_select]
+    #cdef np.ndarray indices = np.random.choice(np.arange(len(parent1.routes)), to_select)
     cdef list inherited_routes = []
     for index in indices:
         inherited_routes.append(parent1.routes[index])
 
 
     # let's reassemble the rest of the routes with savings :)
-    cdef list unserved_clients = sorted(find_unserved_clients(inherited_routes, cvrp_problem.num_clients))
-    cdef list new_routes = [Route([0, i, 0], cvrp_problem.weights[i]) for i in range(1, cvrp_problem.num_clients+1)]
+    cdef set unserved_clients = find_unserved_clients(inherited_routes, cvrp_problem.num_clients)
+    cdef list new_routes = []
+    for client in np.arange(1, cvrp_problem.num_clients+1):
+        if client in unserved_clients:
+            new_routes.append(Route([0, client, 0], cvrp_problem.weights[client]))
+        else:
+            new_routes.append(None)
     cdef list remaining_routes = clark_wright.cw_parallel(new_routes,
                                                           cvrp_problem.distance_matrix,
                                                           cvrp_problem.vehicle_capacity)
+    for route in remaining_routes:
+        steepest_improvement(route, cvrp_problem.distance_matrix)
     # concatenate the routes
     inherited_routes.extend(remaining_routes)
     return Solution(inherited_routes)
@@ -58,9 +78,9 @@ cpdef Solution BRBAX(CVRPProblem cvrp_problem,
 cpdef mutate(Solution sol, int num_clients, np.ndarray weights):
     """insertion mutation operator (Graglia et al.)"""
     cdef int route1, route2, client, insert_position
-    if len(route1.nodes) <= 3:
-        return # to avoid emptying routes
     route1, route2 = select_2(0, len(sol.routes))
+    if len(sol.routes[route1].nodes) <= 3:
+        return # to avoid emptying routes
 
     # remove the client and adjust the weight of the route
     client = sol.routes[route1].nodes.pop(np.random.randint(1, len(sol.routes[route1].nodes)-1))
@@ -114,8 +134,11 @@ cpdef list initialize_population(CVRPProblem cvrp_problem, int pop_size, int k):
     solutions.append(Solution(clark_wright.cw_parallel(routes, cvrp_problem.distance_matrix, cvrp_problem.vehicle_capacity)))
 
     # add now, until the population is filled
+    bar = progress_bar.ProgressBar("Clark & Wright population initialization")
     for iteration in range(pop_size - 1):
-        solutions.append(Solution(clark_wright.cw_parallel_random(routes, distance_matrix, cvrp_problem.vehicle_capacity, k)))
+        bar.update(float(iteration) / (pop_size - 2))
+        solutions.append(Solution(clark_wright.cw_parallel(routes, distance_matrix, cvrp_problem.vehicle_capacity)))
+    bar.clean()
     return solutions
 
 
