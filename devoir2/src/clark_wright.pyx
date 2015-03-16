@@ -5,6 +5,7 @@ import numpy as np
 cimport numpy as np
 
 import copy
+import progress_bar
 import random
 
 # get the route representation
@@ -22,8 +23,6 @@ cdef double distance_savings(Route route1, Route route2,
     """compute the Clark & Wright distance savings"""
     # s_ij = c_i0 + c_0j - c_ij
     if route1 == None or route2 == None:
-        return -np.inf
-    elif route1.nodes == route2.nodes:  # any route with itself is not feasable
         return -np.inf
     elif route1.weight + route2.weight > route_capacity:  # any route that exceeds cap is not feasable
         return -np.inf
@@ -53,41 +52,46 @@ cpdef merge_routes(list routes,
     valid_routes.remove(index2)
     # recalculate all the savings implying the index1
     for i in valid_routes:
-        savings[i][index1] = distance_savings(routes[i], routes[index1], distance_matrix, vehicle_capacity)
-        savings[index1][i] = distance_savings(routes[index1], routes[i], distance_matrix, vehicle_capacity)
+        if i != index1:  # invalid merge
+            savings[i][index1] = distance_savings(routes[i], routes[index1], distance_matrix, vehicle_capacity)
+            savings[index1][i] = distance_savings(routes[index1], routes[i], distance_matrix, vehicle_capacity)
     return
 
 
-cpdef calculate_savings(list routes,
-                        np.ndarray distance_matrix,
-                        np.ndarray savings_matrix,
-                        double vehicle_capacity):
+cpdef np.ndarray calculate_savings(list routes,
+                                   list valid_routes,
+                                   np.ndarray distance_matrix,
+                                   double vehicle_capacity):
     """calculate all the savings for merging"""
+    cdef np.ndarray savings = np.empty((len(routes), len(routes)), dtype=float)
+    savings.fill(-np.inf)
     cdef int index
     cdef int index2
     cdef Route route1
     cdef Route route2
-    for index1, route1 in enumerate(routes):
-        for index2, route2 in enumerate(routes):
-            savings_matrix[index1, index2] = distance_savings(route1, route2, distance_matrix, vehicle_capacity)
-    return
+    for index1 in valid_routes:
+        route1 = routes[index1]
+        for index2 in valid_routes:
+            if index1 != index2:  # illegal merge
+                route2 = routes[index2]
+                savings[index1, index2] = distance_savings(route1, route2, distance_matrix, vehicle_capacity)
+    return savings
 
 
-cpdef list cw_parallel(list routes,
+cpdef list cw_parallel(list original_routes,
                        np.ndarray distance_matrix,
                        double vehicle_capacity):
     """solve the cvrp problem using the original clark & wright parallel heuristic"""
     # setup
-    routes = copy.copy(routes)
-    savings = np.zeros((len(routes), len(routes)), dtype=float)
-    calculate_savings(routes, distance_matrix, savings, vehicle_capacity)
+    cdef list routes = copy.copy(original_routes)
+    cdef list valid_routes = [i for i in range(len(routes)) if routes[i] != None]
+    cdef np.ndarray savings = calculate_savings(routes, valid_routes, distance_matrix, vehicle_capacity)
 
     # loop until no good savings left (max (savings) <= 0)
-    valid_routes = [i for i in range(len(routes)) if routes[i] != None]
     cdef int iter_index = 1
     while True:
         iter_index += 1
-        index1, index2 = np.unravel_index(savings.argmax(), savings.shape)
+        index1, index2 = np.unravel_index(savings.argmax(), (savings.shape[0], savings.shape[1]))
         # stop if there is still a valid merge possible
         if savings[index1, index2] <= 0:
             break
@@ -127,22 +131,20 @@ cpdef tuple select_from_k(int k, np.ndarray savings):
     return chosen_index
 
 
-cpdef list cw_parallel_random(list routes,
+cpdef list cw_parallel_random(list original_routes,
                               np.ndarray distance_matrix,
                               double vehicle_capacity,
                               int k):
     """solve the cvrp problem using the original clark & wright parallel heuristic"""
     # calculate all the savings!
-    routes = copy.copy(routes)
-    savings = np.zeros((len(routes), len(routes)), dtype=float)
-    calculate_savings(routes, distance_matrix, savings, vehicle_capacity)
-    valid_routes = [i for i in range(len(routes)) if routes[i] != None]
-    encoding = []
+    cdef list routes = copy.copy(original_routes)
+    cdef list valid_routes = [i for i in range(len(routes)) if routes[i] != None]
+    cdef np.ndarray savings = calculate_savings(routes, valid_routes, distance_matrix, vehicle_capacity)
+
     # loop until no good savings left (max (savings) <= 0)
     iter_index = 1
     while True:
         indices = select_from_k(k, savings)
-        encoding.append(indices)
         index1, index2 = indices
         # stop if there is still a valid merge possible
         iter_index += 1
@@ -168,9 +170,12 @@ cpdef list monte_carlo(list routes,
     assert(num > 0)
     assert(k > 0)
     cdef list solutions = []
-    for _ in range(num):
+    p = progress_bar.ProgressBar("Monte Carlo")
+    for iteration in range(num):
+        p.update(iteration/float(num-1))
         sol = cw_parallel_random(routes, distance_matrix, vehicle_capacity, k)
         for route in sol:
             steepest_improvement(route, distance_matrix)
         solutions.append(sol)
+    p.clean()
     return solutions

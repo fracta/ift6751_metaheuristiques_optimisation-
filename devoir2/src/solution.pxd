@@ -32,3 +32,10 @@ cdef inline bint richcmp_helper(int compare, int op):
         return compare >= 0
 
 cpdef np.ndarray get_solution_information(Solution sol, np.ndarray distance_matrix, np.ndarray weights)
+
+cpdef list get_centroids(Solution sol, np.ndarray positions)
+
+cpdef double get_angle(double x1, double y1, double x2, double y2)
+
+cpdef list sort_routes_by_angle(Solution sol, np.ndarray positions)
+

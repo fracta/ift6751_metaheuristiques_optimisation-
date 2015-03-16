@@ -8,12 +8,14 @@
 \usepackage[export]{adjustbox}
 \usepackage{footmisc}
 \usepackage[section]{placeins}
+\usepackage{minted}
 \DeclareGraphicsExtensions{.pdf,.png,.jpg,.eps}
 
 \newlength\tindent
 \setlength{\tindent}{\parindent}
 \setlength{\parindent}{0pt}
 \renewcommand{\indent}{\hspace*{\tindent}}
+
 
 \author{
 Gabriel C-Parent\\
@@ -26,286 +28,204 @@ Gabriel C-Parent\\
 \begin{document}
 
 
-\title{IFT6751: Homework 1}
+\title{IFT6751: Homework 2}
       
 \maketitle
 \section{Introduction}
 
-In this homework, different approaches to information retrieval were tested. The dataset used for testing is the Associated Press (TREC AP88-90) and the topics used in the first 3 years of TREC. The topic's titles were extracted and used for query (I didn't want to try other fields such as description). \newline
+In this homework, two different approaches to solve the capacitated vehicle routing problem (CVRP) were explored.
+First, a genetic algorithm procedure was devised, using Clark \& Wright savings \citep{clark_wright_enhanced} to 
+A simple Tabu Search heuristic was implemented, based roughly on  along with a Genetic Algorithm.\newline
 
 
-Four combinations of treatments were tested:
-\begin{enumerate}
-	\item stemmers: None, Krovetz and Porter
-	\item retrieval models: Okapi BM25, tfidf, Dirichlet (with various $\mu$ parameters)
-	\item query sets: 1-50, 51-100, 101-150
-	\item stoplist: using the given stoplist or not
-\end{enumerate}
+Both methods were tested against problem instances without length limit, from \citep{christofides} and compared to the best known solutions.\newline
 
 
-On the 126 resulting combinations, the Mean Average Precision (MAP) at 1000 documents and the Precision at 10 documents (P@10) were measured using the $trec\_eval$ tool.
-
-These results are presented in section \ref{exp_results} and the finer points are discussed in section \ref{analysis_results}.
+A description of each algorithm is given and then some experimental results are compared.
 
 
-The analysis of Indri's internal workflow is presented later in section \ref{indri_workflow}.
 
 
-%-----------------------------------------------------
+\section{Local search method}
+\label{local_search}
+The local search method used to optimize individual routes is the steepest improvement method as described in \citep{steepest_improvement}.
+Basically, it is a greedy use of the well known 2-opt method.\newline
 
+At each iteration, the best possible 2-opt is chosen, according to the reduction in total distance, until there isn't any possible improvement. The complexity of the procedure $O(n^{2})$ on the number of edges in the route.\newline
+
+Although it might seem slow, usually the number of edges is quite small and the time spent optimizing routes is relatively negligible.\newline
+
+Simplified python code can be seen in the code section \ref{code_steepest_improvement}.
+
+
+
+
+
+\section{Clark \& Wright Random Savings}
+
+The Clark \& Wright savings algorithm is a well known simple heuristic for the CVRP.
+Many improvements were suggested for this heuristic \cite{clark_wright_ds}.\newline
+
+The one used in this work is a slight variant of the parallel savings, where instead of choosing the best the best saving and merging the corresponding routes, the $k$ best savings are found and one is randomly chosen.\newline
+
+This procedure is used in both the Tabu Search and Genetic Algorithm procedures.\newline
+
+In the Genetic Algorithm procedure, the random savings is used to generate good initial solutions. The initialization step is costly but the quality of the initial population is great.\newline
+
+In the Tabu Search procedure, the random savings is used to initialize a solution, which is then locally explored until convergence is achieved.
+
+
+
+\section{Genetic Algorithm}
+\label{genetic_algorithm}
+%encodage d’une solution, sélection, croisement, mutation, remplacement de la population, critère d’arrêt
+
+\subsection{Encoding}
+
+The solutions are encoded using the Route object. Basically, a route is a list of clients that starts at the depot and ends at the depot, where no client is repeated. The solution is a list of routes, where each client is in exactly one route.
+
+This representation isn't really friendly to classical crossover operators but allows functions defined on routes and solutions to be shared for both the Tabu Search and Genetic Algorithm representations.
+
+\subsection{Selection}
+
+The simple well known binary tournament selection is used to select the parents of the next generation.
+
+\subsection{Crossover}
+
+
+
+\subsection{Mutation}
+
+
+
+\subsection{Population swap}
+
+
+
+\subsection{Stopping criteria}
+
+
+
+\section{Tabu search}
+\label{tabu_search}
+%espace des solutions admissibles, fonction objectif, voisinage,
+%liste tabou, critères d’aspiration, intensification, diversification, critère d’arrêt
+
+\subsection{Solution space}
+
+
+
+\subsection{Objective function}
+
+
+
+\subsection{Neighbourhood of a solution}
+
+
+
+\subsection{Tabu list}
+
+
+
+\subsection{Asipration criteria}
+
+
+
+\subsection{Intensification}
+
+
+
+\subsection{Diversification}
+
+
+
+\subsection{Stopping criteria}
+
+
+
+
+%------------------------------------------------------------------------------
 \newpage
-
 \section{Experimental results}
 \label{exp_results}
 
+%\subsection{•}
 
-\begin{figure}[!htb]
-\begin{center}
- \includegraphics[scale=0.45]{MAP1000_stoplist}
- \caption{\small  Mean Average Precision at 1000 documents for treatments using the stoplist. Each column represents the topics set (1-50, 51-100, 101-150) and each row a different treatment. There are 4 non-dominated treatments over the three sets of queries: $krovetz\_dirichlet\_2000$, $porter\_dirichlet\_2000$, $krovetz\_okapi$ and $porter\_okapi$.}
- \label{mapstoplist}
- \end{center}
-\end{figure}
+%\begin{figure}[!htb]
+%\begin{center}
+% \includegraphics[scale=0.45]{MAP1000_stoplist}
+% \caption{\small  Mean Average Precision at 1000 documents for treatments using the stoplist. Each column represents the topics set (1-50, 51-100, 101-150) and each row a different treatment. There are 4 non-dominated treatments over the three sets of queries: $krovetz\_dirichlet\_2000$, $porter\_dirichlet\_2000$, $krovetz\_okapi$ and $porter\_okapi$.}
+% \label{mapstoplist}
+% \end{center}
+%\end{figure}
 
-
-\begin{figure}[!htb]
-\begin{center}
- \includegraphics[scale=0.45]{MAP1000_no_stoplist}
- \caption{\small  Mean Average Precision at 1000 documents for treatments using no stoplist. Each column represents the topics set (1-50, 51-100, 101-150) and each row a different treatment. There are 4 non-dominated treatments over the three sets of queries:
- $krovetz\_dirichlet\_1000$, $krovetz\_dirichlet\_2000$, $porter\_dirichlet\_2000$, and $porter\_dirichlet\_5000$}
-  \label{mapnostoplist}
- \end{center}
-\end{figure}
-
-
-
-
-
-%-----------------------------------------------------
-
-\begin{figure}[!htb]
-\begin{center}
- \includegraphics[scale=0.45]{P10_stoplist}
- \caption{\small  Precision at 10 documents for treatments using the stoplist. Each column represents the topics set (1-50, 51-100, 101-150) and each row a different treatment. There are 9 non-dominated treatments over the three sets of queries: $krovetz\_dirichlet\_[1000, 2000, 50000, 10000]$,
- $no stemmer\_dirichlet[2000, 5000]$ and $porter\_dirichlet\_[2000, 5000, 10000]$.}
-  \label{p10stoplist}
- \end{center}
-\end{figure}
-
-
-\begin{figure}[!htb]
-\begin{center}
- \includegraphics[scale=0.45]{P10_no_stoplist}
- \caption{\small  Precision at 10 documents for treatments using no stoplist. Each column represents the topics set (1-50, 51-100, 101-150) and each row a different treatment. There are 9 non-dominated treatments over the three sets of queries: $krovetz\_dirichlet\_[1000, 2000, 50000, 10000]$, and $porter\_dirichlet\_[2000, 5000, 10000]$.}
-  \label{p10nostoplist}
- \end{center}
-\end{figure}
-
-
-%--------------------------------------------------------------------------
-
-
-\begin{figure}[!htb]
-\begin{center}
- \includegraphics[scale=0.3]{MAP1000_diff}
- \caption{\small Difference of Mean Average Precision at 1000 documents between the treatments using a stoplist and those without one. We can see that for for most treatments, the use of a stoplist is not beneficial for the experimental settings used (the values are either close to zero or slightly negative). The only model for which there seems to be significant improvement is the Okapi BM25.}
- \label{diff:mapdiff}
- \end{center}
-\end{figure}
-
-
-
-\begin{figure}[!htb]
-\begin{center}
- \includegraphics[scale=0.3]{P10_diff}
- \caption{\small  Difference of Precision at 10
-  between the treatments using a stoplist and those without one. Each column represents the topics set (1-50, 51-100, 101-150) and each row a different treatment. There are quite a lot more positive difference than for the Mean Average Precision at 1000 documents (figure \ref{diff:mapdiff}). This means that for Precision at 10 documents, the stoplist has less of a negative effect than for the MAP1000 measure. Again, the Okapi BM25 is the only one to really benefit from the stoplist.}
-   \label{p10diff}
- \end{center}
-\end{figure}
 
 
 \section{Analysis of experimental results}
 \label{analysis_results}
 
-\subsection{Query sets}
-A large portion of the variation seen in the experimental results is caused by the query sets.
 
-From the MAP1000 analysis in figure[\ref{mapstoplist}, \ref{mapnostoplist}], for all combination of parameters, queries 1-50 gave the lowest scores, 51-100 the highest and 101-150 were in the middle.\newline
+\subsection{Genetic Algorithm}
 
 
-When we look at the average number of words per query for each query set, we get:
-%4.06, 3.68, 4.8
-\begin{itemize}
-	\item queries 1-50: 4.06
-	\item queries 51-100: 3.68
-	\item queries 101-150: 4.8
-\end{itemize}
 
-So the average number of word per query doesn't seem to be in correlation with the observed effect on the MAP1000 score. Perhaps the number of stopwords in the queries would be significantly different from year to year.
+\subsection{Tabu Search}
 
-For the P@10 (figure [\ref{p10stoplist}, \ref{p10nostoplist}]), the result correlates with the inverse of average word per query, with best scores from queries 51-100, medium from 1-50 and worst from 101-150. Still, it might just be a fluke.
-
-
-\subsection{Stemmers}
-
-In the case of MAP1000, the absence of stemming yields slightly lower scores for every treatment, whereas there isn't much difference between the Porter and Krovetz stemmers (figure[\ref{mapstoplist}, \ref{mapnostoplist}]).\newline
-
-
-In the case of of P@10, the variation caused by the different stemming methods is probably not significative. This is true both for treatments using the stoplist and those without (figure[\ref{p10stoplist}, \ref{p10nostoplist}]).
-
-Therefore, for stemmers, having one seems to be better, at least in the case of MAP1000, but the difference in performance is minimal.
-
-
-\subsection{Stoplist}
-
-The examination of the effect of using or not a stoplist is shown in figure[\ref{diff:mapdiff}, \ref{p10diff}]. In most cases, the difference is negligible. The only case where there is a significant difference is the Okapi BM25 retrieval model. This can be explained by the assumptions this model makes when calculating its score. Because of the subtraction by 0.5, if the frequency of a term is more or equal to 0.5, than it will get a negative weight which doesn't make sense (\href{http://nlp.stanford.edu/IR-book/html/htmledition/okapi-bm25-a-non-binary-model-1.html}{see here for more details}).\newline
-
-So, apart from retrieval models that assume the presence of a stoplist in their scoring scheme, the difference in performance, both for MAP1000 and P@10 is minimal (if not slightly negative).
-
-%This variant behaves slightly strangely: if a term occurs in over half the documents in the collection then this model gives a negative term weight, which is presumably undesirable. But, assuming the use of a stop list, this normally doesn't happen, and the value for each summand can be given a floor of 0.
-%http://nlp.stanford.edu/IR-book/html/htmledition/okapi-bm25-a-non-binary-model-1.html
 
 
 \subsection{Non-dominated treatments}
 
-An interesting analysis to perform in cases where we would like to know which combinations of parameters works well is the analysis of dominance. Since there are multiple scores (6 scores, query sets $\times$ stoplists), one way to narrow down the good ones is to search for a set of nondominated treatments. Dominance and non-dominance are transitive relations that can be used to rank objects in disjoint sets. The set of nondominated objects is equivalent to a Pareto front, upon which no solution is decidedly better or worse than another because each is at least superior or equal in one objective (one of the 6 scores in our case) to all other objects in the nondominated front.\newline
-
-For the MAP1000 scores, the following treatments are nondominated:
 
 
-\begin{itemize}
-	\item Krovetz + Dirichlet($\mu$=2000)
-	\item Porter  + Dirichlet($\mu$=2000)
-\end{itemize} 
-
-
-For P@10:
-
-\begin{itemize}
-	\item Krovetz + Dirichlet($\mu$=1000)
-	\item Krovetz + Dirichlet($\mu$=2000)
-	\item Krovetz + Dirichlet($\mu$=5000)
-	\item Krovetz + Dirichlet($\mu$=10000)
-	\item Porter + Dirichlet($\mu$=2000)
-	\item Porter + Dirichlet($\mu$=5000)
-	\item Porter + Dirichlet($\mu$=10000)
-\end{itemize}
-
-
-The intersection of MAP1000 and P@10 yields the following two treatments that were nondominated for both scoring schemes:
-
-\begin{itemize}
-	\item Krovetz + Dirichlet($\mu$=2000)
-	\item Porter  + Dirichlet($\mu$=2000)
-\end{itemize} 
-
-So, it is interesting to see that the Dirichlet smoothed retrieval model was clearly dominating in the experiment, whereas the absense of stemmer and the tfidf and Okapi BM25 were dominated.
-
-
-\section{Indri's internal workflow}
-\label{indri_workflow}
-
-Most of the information used here was taken from the wiki, as suggested.
-
-
-\subsection{Index building workflow}
-
-Overall, the index building is pretty straightforward. It is executed by IndriBuildIndex's main method. A few useful classes are included to deal with the file system (FileTreeIterator, DirectoryIterator, Path, etc.), with Indri's objects and parameters (QueryEnvironment, IndexEnvironment, Parameters) and to deal with threads (ScopedLock, Thread). \newline
-
-Basically, the main method consists of the acquisition of the parameters (either through xml parameter file or through command line), mainly the corpus and index paths and other settings such as memory limitations, stemmer, stopwords and metadata related information.
-
-Then, the files are read through a loop on the FileTreeIterator and adding it to the environment object (indri::api::IndexEnvironment).
-
-The index is then stored in the file system.
-
-
-\subsection{Retrieval overview}
-\label{retrieval_overview}
-
-So, there are 6 main types of nodes used in the inference network (Bayesian network) for information retrieval in Indri.\newline
-
-\begin{enumerate}
-	\item document node: 
-	
-The representation of a document from the index varies depending on the model used for query.
-
-	\item smoothing parameter nodes: 
-	
-They store the model's hyperparameters (think $\mu$ used earlier for the Dirichlet smoothing).
-
-	\item model nodes: 
-
-They allow models to be estimated on different representation of documents and then combined.
-
-	\item representation of concept nodes: 
-	
-Represent the features extracted from the document representation, such as binary vectors for presence/absence. 
-
-	\item belief nodes: 
-	
-Binary random variables used to combine probabilities in the Bayesian network. The beliefs can be combined and weighted using the different query operators.
-
-	\item information need node: 
-	
-The culmination of the belief nodes, the one that combines the evidence over the network into a single belief and allows for ranking of the documents. This is the goal of the whole query process.
-	
-\end{enumerate}
-
-
-\subsection{Query workflow}
-
-As described in subsection \ref{retrieval_overview}, the goal is for each document to combine the evidence of the Bayesian network implicitly formulated in query. To do so requires a few steps.
-
-
-\begin{enumerate}
-
-	\item Parser creation and query parsing
-	
-A parser is created to read the query file (or command line parameters). It is generated by the parser generator ANTLR (ANother Tool for Language Recognition). An indri::lang::QueryLexer is created and then wrapped into a an indri::api::QueryParserWrapper object to interface with the QueryEnvironment of Indri.\newline
-
-The query is parsed (in the form of a parse tree) and the root node is fed into the query environment. Basically, it is like creating an abstract syntax tree with special nodes for information retrieval. The root node is of type indri::lang::CombineNode.
-
-
-	\item Extent restriction modification
-
-An ExtentRestrictionModelAnnotatorCopier is created to work with extent restrictions in the query. In the cases with no such restrictions, the same parse tree is returned, otherwise the appropriate modifications are made to the parse tree to reflect the restrictions.
-
-	\item Raw scoring node extraction
-
-The parse tree is modified by a "walker", which is similar to a copier, but works directly on the parse tree instead of returning a copy. The nodes inheriting from indri::lang::RawScorerNode are pushed into a special vector.
-
-	\item Gathering statistics and smoothing
-
-A new parse tree is created, with a vector of indri::lang::AccumulatorNode to get the internal context and count of each scoring node. The query is run without smoothing parameters (they are added afterwards). A walker (SmoothingAnnotatorWalker) applies the specified smoothing parameters over the raw scoring nodes of the tree.
-
-
-	\item Creation of optimized inference network from parse tree and query environment
-
-An optimized inference network is created to evaluate all documents. The creation of such object implies the removal of unnecessary nodes and documents from the parse tree (for example if only a subset of the collection was targeted) and other modifications.
-
-
-	\item Evaluation of the documents
-
-The heavy lifting part, this is where each document is evaluated against the query. The documents are evaluated and scored.
-
-	\item Return of the result
-
-The previously calculated scores are used to return (at least in our use of it) a ranking of the documents for the query. This might require some sort of sorting or more clever algorithms if the count is really low compared to the size of the collection...
-
-\end{enumerate}
-
-
-
-
-
+%------------------------------------------------------------------------------
 \section{Conclusion}
 
-All in all, the experimental results can be explained with satisfaction and seem to make sense.\newline
 
-Indri's system is pretty cool and the C++ is pretty readable, so it makes it worth working with.\newline
 
-All the code used for this homework is accessible \href{https://github.com/fracta/ift6255_recherche_info/tree/master/dev1}{here}. The README can be used to know what was done.
+\bibliographystyle{plain}
+
+\bibliography{dev2}
+
+\section{Code example}
+
+
+\subsection{Steepest Improvement}
+\label{code_steepest_improvement}
+\begin{minted}[mathescape,
+               linenos,
+               numbersep=5pt,
+               frame=lines,
+               framesep=2mm]{python}
+
+def steepest_improvement(route, dist):
+    """steepest improvement procedure, using 2-opt"""
+    best_ind1 = 0
+    best_ind3 = 0
+    savings = 0.
+    proposed_savings = 0.
+    # iterate until there isn't any better local choice (2-opt)
+    while True:
+        savings = 0.
+        for ind1 in range(0, len(route.nodes)-2):
+            for ind3 in range(ind1+2, len(route.nodes)-1):
+                n1 = route.nodes[ind1]
+                n2 = route.nodes[ind1 + 1]
+                n3 = route.nodes[ind3]
+                n4 = route.nodes[ind3+1]
+                actual = dist[n1][n2] + dist[n3][n4]
+                proposed = dist[n1][n3] + dist[n2][n4]
+                proposed_savings = actual - proposed
+                if proposed_savings > savings:
+                    best_ind1 = ind1
+                    best_ind3 = ind3
+                    savings = proposed_savings
+        if savings > 0.:
+        	# do the 2-opt exchange
+            two_opt(route, best_ind1, best_ind3)
+        else:
+            return
+    return
+\end{minted}
 
 \end{document}
 

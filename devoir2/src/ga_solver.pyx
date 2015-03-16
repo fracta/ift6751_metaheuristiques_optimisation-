@@ -17,16 +17,39 @@ from solution cimport Solution, get_solution_information
 import progress_bar
 
 
-cpdef solution_union(Solution solution1, Solution solution2):
+cpdef find_inherited_routes(Solution solution1,
+                            Solution solution2,
+                            np.ndarray positions):
     """return the biggest union of non intersecting routes between solution 1 and 2"""
-    cdef list intersection = []
-    cdef int index1, index2
-    for index1, route1 in enumerate(solution1.routes):
-        tmp = (index1, set())
-        set1 = set()
-        for index2, route2 in enumerate(solution2.routes):
-            if 
-    pass
+
+    cdef int to_select = np.floor(len(solution1.routes)/4.)
+    # rearrange the routes by their angle relative to the depot and get values
+    cdef list angles1 = solution.sort_routes_by_angle(solution1, positions)
+    cdef list angles2 = solution.sort_routes_by_angle(solution2, positions)
+
+    # select one route and its clockwise neighbors
+    cdef list selected_routes1 = []
+    cdef int index1 = np.random.randint(0, len(angles1))
+    cdef set clients1 = set()
+    cdef int ind
+    for i in range(to_select):
+        ind = (index1 + i) % len(angles1)
+        # add the selected route
+        selected_routes1.append(ind)
+        # add the clients of these routes
+        clients1.add(set(solution1.routes[ind].nodes[1:-1]))
+
+    # initialize the sets of clients
+    cdef list selected_routes2 = []
+    cdef set set2
+    for (index2, route2) in enumerate(solution2.routes):
+        set2 = set(route2.nodes[1:-1])
+        if set2.isdisjoint(clients1):
+            selected_routes2.append(index2)
+
+    # select one route and its direct neighbors counterclockwise
+    
+    return
 
 
 cpdef set find_unserved_clients(list routes, int num_clients):
@@ -39,15 +62,14 @@ cpdef set find_unserved_clients(list routes, int num_clients):
     return clients.difference(served_clients)
 
 
-cpdef Solution BRBAX(CVRPProblem cvrp_problem,
-                     Solution parent1, Solution parent2,
-                     np.ndarray route_info):
+cpdef Solution crossover(CVRPProblem cvrp_problem,
+                         Solution parent1, Solution parent2,
+                         np.ndarray route_info):
     """"Optimised crossover genetic algoritm for capacited vehicle routing problem"
      by Nazif and Lee, 2012, modified with added Clark & Wright"""
 
     # select m / 2 routes with least discrepancy with the capacity limit from parent 1
     cdef int to_select = np.round(len(parent1.routes)/2.)
-
     cdef np.ndarray capacity_difference = np.abs(np.subtract(route_info["weight"],
                                                              cvrp_problem.vehicle_capacity))
     cdef np.ndarray indices = np.argpartition(capacity_difference, to_select)[: to_select]
@@ -134,10 +156,10 @@ cpdef list initialize_population(CVRPProblem cvrp_problem, int pop_size, int k):
     solutions.append(Solution(clark_wright.cw_parallel(routes, cvrp_problem.distance_matrix, cvrp_problem.vehicle_capacity)))
 
     # add now, until the population is filled
-    bar = progress_bar.ProgressBar("Clark & Wright population initialization")
+    bar = progress_bar.ProgressBar("Random Savings Initialization")
     for iteration in range(pop_size - 1):
         bar.update(float(iteration) / (pop_size - 2))
-        solutions.append(Solution(clark_wright.cw_parallel(routes, distance_matrix, cvrp_problem.vehicle_capacity)))
+        solutions.append(Solution(clark_wright.cw_parallel_random(routes, distance_matrix, cvrp_problem.vehicle_capacity, k)))
     bar.clean()
     return solutions
 
@@ -159,6 +181,7 @@ cpdef double calculate_score(Solution sol, CVRPProblem cvrp_problem, double pena
 cpdef solve(CVRPProblem cvrp_problem,
             int population_size,
             int num_generations,
+            int seed,
             double recombination_prob=0.65,
             double mutation_prob=0.1,
             int k=4):
@@ -180,7 +203,7 @@ cpdef solve(CVRPProblem cvrp_problem,
     cdef double current_best_score
 
     # start the progress meter
-    bar = progress_bar.ProgressBar("genetic algorithm")
+    bar = progress_bar.ProgressBar("Main loop")
     cdef double iteration = 0.
 
     cdef int i
@@ -216,7 +239,7 @@ cpdef solve(CVRPProblem cvrp_problem,
             # crossover
             if np.random.rand() < recombination_prob:
                 p1_info = get_solution_information(parent1, cvrp_problem.distance_matrix, cvrp_problem.weights)
-                child = BRBAX(cvrp_problem, parent1, parent2, p1_info)
+                child = crossover(cvrp_problem, parent1, parent2, p1_info)
             else:
                 child = parent1.copy()
 

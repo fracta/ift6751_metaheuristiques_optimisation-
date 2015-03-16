@@ -1,6 +1,7 @@
 """route and other objects for CVRP optimization"""
 
 import copy
+import numpy as np
 
 cdef class Route:
     """represents a route, sequence of integers"""
