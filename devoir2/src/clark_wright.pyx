@@ -17,6 +17,8 @@ cimport solution
 from solution import Solution
 
 
+import timeit
+
 cdef double distance_savings(Route route1, Route route2,
                              np.ndarray distance_matrix,
                              double route_capacity):
@@ -160,19 +162,25 @@ cpdef list cw_parallel_random(list original_routes,
     return result
 
 
-cpdef list monte_carlo(list routes,
-                       int num,
-                       int k,
-                       np.ndarray distance_matrix,
-                       double vehicle_capacity):
+cpdef list random_savings(prob,
+                          double time_limit,  # in seconds
+                          int k,
+                          np.ndarray distance_matrix,
+                          double vehicle_capacity):
     """run random choices of the k-best savings at each step, num times"""
     # as suggested in "A new enhancement of the Clark and Wright Savings.."
-    assert(num > 0)
+    assert(time_limit > 0)
     assert(k > 0)
+    cdef list routes = [Route([0, i, 0], prob.weights[i]) for i in range(1, prob.num_clients+1)]
     cdef list solutions = []
     p = progress_bar.ProgressBar("Monte Carlo")
-    for iteration in range(num):
-        p.update(iteration/float(num-1))
+    start_time = timeit.default_timer()
+    while True:
+        current_time = timeit.default_timer()
+        time_difference = current_time - start_time
+        if time_limit < time_difference:
+            break
+        p.update(time_difference/time_limit)
         sol = cw_parallel_random(routes, distance_matrix, vehicle_capacity, k)
         for route in sol:
             steepest_improvement(route, distance_matrix)

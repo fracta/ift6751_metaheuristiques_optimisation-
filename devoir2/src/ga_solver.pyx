@@ -17,9 +17,9 @@ from solution cimport Solution, get_solution_information
 import progress_bar
 
 
-cpdef find_inherited_routes(Solution solution1,
-                            Solution solution2,
-                            np.ndarray positions):
+cpdef tuple find_inherited_routes(Solution solution1,
+                                  Solution solution2,
+                                  np.ndarray positions):
     """return the biggest union of non intersecting routes between solution 1 and 2"""
 
     cdef int to_select = np.floor(len(solution1.routes)/4.)
@@ -37,9 +37,10 @@ cpdef find_inherited_routes(Solution solution1,
         # add the selected route
         selected_routes1.append(ind)
         # add the clients of these routes
-        clients1.add(set(solution1.routes[ind].nodes[1:-1]))
+        clients1 = clients1.union(set(solution1.routes[ind].nodes[1:-1]))
 
-    # initialize the sets of clients
+    # select routes from second parent who share no clients with
+    # selected routes from first parent
     cdef list selected_routes2 = []
     cdef set set2
     for (index2, route2) in enumerate(solution2.routes):
@@ -47,9 +48,14 @@ cpdef find_inherited_routes(Solution solution1,
         if set2.isdisjoint(clients1):
             selected_routes2.append(index2)
 
-    # select one route and its direct neighbors counterclockwise
-    
-    return
+    # if there are more routes needed, select a subset
+    if len(selected_routes2) > to_select:
+        index2 = np.random.randint(0, len(selected_routes2))
+        tmp = []
+        for i in range(to_select):
+            tmp.append(selected_routes2[(i+to_select)%len(selected_routes2)])
+        selected_routes2 = tmp
+    return (selected_routes1, selected_routes2)
 
 
 cpdef set find_unserved_clients(list routes, int num_clients):
@@ -77,6 +83,41 @@ cpdef Solution crossover(CVRPProblem cvrp_problem,
     cdef list inherited_routes = []
     for index in indices:
         inherited_routes.append(parent1.routes[index])
+
+
+    # let's reassemble the rest of the routes with savings :)
+    cdef set unserved_clients = find_unserved_clients(inherited_routes, cvrp_problem.num_clients)
+    cdef list new_routes = []
+    for client in np.arange(1, cvrp_problem.num_clients+1):
+        if client in unserved_clients:
+            new_routes.append(Route([0, client, 0], cvrp_problem.weights[client]))
+        else:
+            new_routes.append(None)
+    cdef list remaining_routes = clark_wright.cw_parallel(new_routes,
+                                                          cvrp_problem.distance_matrix,
+                                                          cvrp_problem.vehicle_capacity)
+    for route in remaining_routes:
+        steepest_improvement(route, cvrp_problem.distance_matrix)
+    # concatenate the routes
+    inherited_routes.extend(remaining_routes)
+    return Solution(inherited_routes)
+
+
+cpdef Solution crossover_petals(CVRPProblem cvrp_problem,
+                                Solution parent1, Solution parent2,
+                                np.ndarray route_info):
+    """"Optimised crossover genetic algoritm for capacited vehicle routing problem"
+     by Nazif and Lee, 2012, modified with added Clark & Wright"""
+
+    # select m / 2 routes with least discrepancy with the capacity limit from parent 1
+
+    cdef tuple indices = find_inherited_routes(parent1, parent2, cvrp_problem.positions)
+    cdef list inherited_routes = []
+    cdef int index
+    for index in indices[0]:
+        inherited_routes.append(parent1.routes[index])
+    for index in indices[1]:
+        inherited_routes.append(parent2.routes[index])
 
 
     # let's reassemble the rest of the routes with savings :)
@@ -182,11 +223,18 @@ cpdef solve(CVRPProblem cvrp_problem,
             int population_size,
             int num_generations,
             int seed,
+            double elitism = 0.1,
             double recombination_prob=0.65,
             double mutation_prob=0.1,
             int k=4):
     """solve the cvrp problem using a simple genetic algorithm"""
     # initialize the population using the k-savings
+    assert(population_size > 0)
+    assert(num_generations >= 0)
+    assert(0 <= elitism <= 1)
+    assert(0 <= recombination_prob <= 1)
+    assert(0 <= mutation_prob <= 1)
+    assert(k > 0)
     cdef list population = initialize_population(cvrp_problem,
                                                  population_size,
                                                  k)
@@ -206,9 +254,9 @@ cpdef solve(CVRPProblem cvrp_problem,
     bar = progress_bar.ProgressBar("Main loop")
     cdef double iteration = 0.
 
+    cdef int elite_size = np.round(elitism * population_size)
     cdef int i
-    cdef list parents
-    cdef list children
+    cdef list children, parents, elite
     cdef np.ndarray p1_info
 
     for generation_index in range(num_generations):
@@ -216,30 +264,27 @@ cpdef solve(CVRPProblem cvrp_problem,
         iteration += 1.
         bar.update(iteration / num_generations)
 
-        # find out the index of the best solution at this iteration
-        current_best_index = 0
-        current_best_score = np.inf
-
         # score the solutions
         for index, solution in enumerate(population):
             # optimize the routes and assign the new scores
             solution.score = calculate_score(solution, cvrp_problem)
-            if solution.score < current_best_score:
-                current_best_score = solution.score
-                current_best_index = index
-        best_solutions.append(population[current_best_index].copy())
+
+        # elitist selection
+        population = sorted(population)
+        elite = [sol.copy() for sol in population[: elite_size]]
+        best_solutions.append(elite[0].copy())
 
         # selection process
-        parents = binary_tournament_selection(population, population_size*2)
+        parents = binary_tournament_selection(population, (population_size-elite_size)*2)
         children = []
-        for i in range(population_size):
+        for i in range(population_size-elite_size):
             parent1 = parents[i*2]
             parent2 = parents[(i*2)+1]
 
             # crossover
             if np.random.rand() < recombination_prob:
                 p1_info = get_solution_information(parent1, cvrp_problem.distance_matrix, cvrp_problem.weights)
-                child = crossover(cvrp_problem, parent1, parent2, p1_info)
+                child = crossover_petals(cvrp_problem, parent1, parent2, p1_info)
             else:
                 child = parent1.copy()
 
@@ -247,7 +292,9 @@ cpdef solve(CVRPProblem cvrp_problem,
             if np.random.rand() < mutation_prob:
                 mutate(child, cvrp_problem.num_clients, cvrp_problem.weights)
             children.append(child)
-        # replace the population by its children
+
+        # replace the population by its children and the previous elite
+        children.extend(elite)
         population = children
 
     # clean the progress bar

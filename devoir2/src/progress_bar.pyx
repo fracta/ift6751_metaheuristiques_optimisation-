@@ -21,6 +21,7 @@ cdef class ProgressBar:
         sys.stdout.flush()
 
     cpdef clean(self):
+        self.update(1.)
         sys.stdout.write("\n")
         sys.stdout.flush()
 
