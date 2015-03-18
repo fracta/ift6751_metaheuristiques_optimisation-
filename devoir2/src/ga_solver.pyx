@@ -1,3 +1,4 @@
+# cython: profile=True
 """genetic algorithm solver for the constrained vehicle routing problem (CVRP)"""
 
 import numpy as np
@@ -138,6 +139,9 @@ cpdef Solution crossover_petals(CVRPProblem cvrp_problem,
     return Solution(inherited_routes)
 
 
+cpdef mutate_
+
+
 cpdef mutate(Solution sol, int num_clients, np.ndarray weights):
     """insertion mutation operator (Graglia et al.)"""
     cdef int route1, route2, client, insert_position
@@ -220,9 +224,9 @@ cpdef double calculate_score(Solution sol, CVRPProblem cvrp_problem, double pena
 
 
 cpdef solve(CVRPProblem cvrp_problem,
+            int initialize_size,  # size of the c&w initial exploration
             int population_size,
             int num_generations,
-            int seed,
             double elitism = 0.1,
             double recombination_prob=0.65,
             double mutation_prob=0.1,
@@ -238,7 +242,7 @@ cpdef solve(CVRPProblem cvrp_problem,
     cdef list population = initialize_population(cvrp_problem,
                                                  population_size,
                                                  k)
-
+    population.sort() # need to fix this
     # optimize the routes of all individuals using steepest improvement
     for solution in population:
         for route in solution.routes:
