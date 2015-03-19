@@ -24,6 +24,7 @@ cdef class Move:
     cdef public int client2
     cdef public int r1_index
     cdef public int r2_index
+
     def __init__(self, float value, int c1, int r2, int c2, int r1):
         self.value=value
         self.client1=c1
@@ -295,19 +296,15 @@ cdef class TabuList:
 
 
 cpdef steepest_descent(CVRPProblem prob, Solution sol):
-    """ """
+    """greedily make the move that improves most the value"""
     cdef Solution copied = sol.copy()
     cdef np.ndarray mat = initial_calculate_savings(copied, prob)
     cdef int x, y
-    cdef double saving
     cdef Move mv
-    cdef int iteration = 0
+
     while True:
-        iteration += 1
-        #print iteration
         x, y = min_index_ut(mat)
         mv = mat[x, y]
-        #print "{0}, {1}: {2}".format(x, y, mv)
         if mv.value > 0:
             break
         else:

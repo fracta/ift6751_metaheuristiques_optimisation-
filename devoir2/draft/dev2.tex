@@ -33,21 +33,30 @@ Gabriel C-Parent\\
 \maketitle
 \section{Introduction}
 
-In this homework, two different approaches to solve the capacitated vehicle routing problem (CVRP) were explored.
-First, a genetic algorithm procedure was devised, using Clark \& Wright savings \citep{clark_wright_enhanced} to 
-A simple Tabu Search heuristic was implemented, based roughly on  along with a Genetic Algorithm.\newline
+In this homework, two different approaches to solve the capacitated vehicle routing problem (CVRP) were designed. The first one is a genetic algorithm using specialized crossover and mutation operators whereas the the second one uses the Tabu Search to control local search with the $\lambda$-interchange neighbourhood.\newline
+
+Two greedy local search methods are used within both methods to improve the results such as the 2-opt descent and  and the $\lambda$-interchange descent.\newline
+
+Another method based on the Clark \& Wright savings is also used to initialize solutions for both metaheuristics.\newline
 
 
 Both methods were tested against problem instances without length limit, from \citep{christofides} and compared to the best known solutions.\newline
 
 
-A description of each algorithm is given and then some experimental results are compared.
+A description of all the optimization methods along with special implementation details is given.
+Some experimental results are then compared based on running time, implementation complexity and results quality.
 
 
 
-
-\section{Local search method}
+\newpage
+\section{Local search methods}
 \label{local_search}
+
+
+\subsection{2-opt descent}
+
+First, a simple and fast optimization method for the TSP was needed to improve the path of each routes.
+
 The local search method used to optimize individual routes is the steepest improvement method as described in \citep{steepest_improvement}.
 Basically, it is a greedy use of the well known 2-opt method.\newline
 
@@ -58,10 +67,16 @@ Although it might seem slow, usually the number of edges is quite small and the 
 Simplified python code can be seen in the code section \ref{code_steepest_improvement}.
 
 
+\subsection{$\lambda$-interchange descent}
+Another optimization method was needed to exchange clients between routes, in this case the $\lambda$-interchange descent with $\lambda$=1 \citep{osman1993}.\newline
+
+The possible transitions are the transfer of a client from a route to another and the swap of two clients between two routes. Since only feasible solutions are considered, only transitions that do not violate the capacity limit are considered.\newline
+
+The procedure chooses the interchange with best possible improvement and applies it. Then the 2-opt descent is applied to the modified routes and the process is repeated until it gets stuck in a local minima.
 
 
-
-\section{Clark \& Wright Random Savings}
+\newpage
+\section{Random Savings Initialization}
 
 The Clark \& Wright savings algorithm is a well known simple heuristic for the CVRP.
 Many improvements were suggested for this heuristic \cite{clark_wright_ds}.\newline
@@ -75,7 +90,7 @@ In the Genetic Algorithm procedure, the random savings is used to generate good 
 In the Tabu Search procedure, the random savings is used to initialize a solution, which is then locally explored until convergence is achieved.
 
 
-
+\newpage
 \section{Genetic Algorithm}
 \label{genetic_algorithm}
 %encodage d’une solution, sélection, croisement, mutation, remplacement de la population, critère d’arrêt
@@ -86,13 +101,27 @@ The solutions are encoded using the Route object. Basically, a route is a list o
 
 This representation isn't really friendly to classical crossover operators but allows functions defined on routes and solutions to be shared for both the Tabu Search and Genetic Algorithm representations.
 
+\subsection{Objective function}
+
+The objective function is the minimization of the total distance of the routes.
+
+\begin{equation*}
+\begin{aligned}
+& \text{minimize}
+& & \sum\limits_{r \in solution} distance(r) \\
+& \text{subject to}
+& & weight(r) \leq vehicle\ capacity
+\end{aligned}
+\end{equation*}
+
 \subsection{Selection}
 
 The simple well known binary tournament selection is used to select the parents of the next generation.
 
 \subsection{Crossover}
 
-The crossover used here is related to the concept of petals. Basically, the
+The crossover used here is related to the concept of petals.
+Basically, the
 
 \subsection{Mutation}
 
@@ -105,22 +134,36 @@ The crossover used here is related to the concept of petals. Basically, the
 \subsection{Stopping criteria}
 
 
-
+\newpage
 \section{Tabu search}
 \label{tabu_search}
 %espace des solutions admissibles, fonction objectif, voisinage,
 %liste tabou, critères d’aspiration, intensification, diversification, critère d’arrêt
 
+With minor variations, the Tabu Search implemented was the same as in \citep{osman1993}.
+
 \subsection{Solution space}
 
+Only feasible solutions are considered, that is those not violating the capacity constraint.
 
 
 \subsection{Objective function}
 
+The objective function is the minimization of the total distance of the routes.
+
+\begin{equation*}
+\begin{aligned}
+& \text{minimize}
+& & \sum\limits_{r \in solution} distance(r) \\
+& \text{subject to}
+& & weight(r) \leq vehicle\ capacity
+\end{aligned}
+\end{equation*}
 
 
 \subsection{Neighbourhood of a solution}
 
+The neighbourhood of a solution is all the feasible solutions that can be reached by applying the $\lambda$-interchange, with $\lambda$=1.
 
 
 \subsection{Tabu list}
@@ -137,11 +180,12 @@ The crossover used here is related to the concept of petals. Basically, the
 
 \subsection{Diversification}
 
+The diversification strategy used here is to restart the Tabu Search with a new solution created by random savings.
 
 
 \subsection{Stopping criteria}
 
-
+As with the genetic algorithm, the stopping criteria can be a set number of iterations or a time limit, depending on the type of constraints the user has.
 
 
 %------------------------------------------------------------------------------
@@ -149,7 +193,7 @@ The crossover used here is related to the concept of petals. Basically, the
 \section{Experimental results}
 \label{exp_results}
 
-%\subsection{•}
+%\subsection{}
 
 %\begin{figure}[!htb]
 %\begin{center}
@@ -186,10 +230,10 @@ The crossover used here is related to the concept of petals. Basically, the
 
 \bibliography{dev2}
 
+\newpage
 \section{Code example}
 
-
-\subsection{Steepest Improvement}
+\subsection{2-opt descent}
 \label{code_steepest_improvement}
 \begin{minted}[mathescape,
                linenos,
