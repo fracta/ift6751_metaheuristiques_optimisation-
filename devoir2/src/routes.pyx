@@ -19,6 +19,28 @@ cdef class Route:
         return self.__str__()
     cpdef copy(self):
         return Route(copy.copy(self.nodes), self.weight)
+    cpdef bint is_equal(self, Route other):
+        return np.array_equal(self.nodes, other.nodes) and self.weight == other.weight
+
+    cpdef int remove_client_index(self, int index, np.ndarray weights):
+        """remove the client at specified index and update the weight"""
+        cdef int client = self.nodes.pop(index)
+        self.weight -= weights[client]
+        return client
+
+    cpdef int remove_client(self, int client, np.ndarray weights):
+        """remove specified client and update the weight"""
+        cdef int index=0
+        for index, c in enumerate(self.nodes):
+            if c == client:
+                return self.remove_client_index(index, weights)
+        raise LookupError("Specified client isn't in the route")
+
+    cpdef add_client(self, int index, int client, np.ndarray weights):
+        """add the client at index and update the weight"""
+        self.weight += weights[client]
+        self.nodes.insert(index, client)
+        return
 
 
 cpdef tuple get_information(Route route,

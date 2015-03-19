@@ -30,6 +30,9 @@ def print_solution(client_positions, distance_matrix, weights, routes):
     plt.scatter(client_positions[1:]['x'], client_positions[1:]['y']) # clients
     plt.scatter(client_positions[0]['x'], client_positions[0]['y'], marker='s', color='r') # depot
 
+    for index, tup in enumerate(client_positions[1:]):
+        plt.annotate(tup["id"], (tup["x"], tup["y"]))
+
     # plot the routes
     cmap = matplotlib.cm.Set1
     for (route_index, route) in enumerate(routes):

@@ -2,6 +2,7 @@
 
 # used in both tabu and genetic algorithm solver
 
+import copy
 
 cimport numpy as np
 import numpy as np
@@ -11,8 +12,8 @@ cdef class Solution:
     """a solution to the cvrp problem"""
 
     def __init__(self, list routes, double score=-1):
-        self.routes = routes
-        self.score = score
+        self.routes = copy.copy(routes)
+        self.score = copy.copy(score)
 
     def __str__(self):
         return str(self.routes)
