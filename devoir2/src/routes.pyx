@@ -17,7 +17,7 @@ cdef class Route:
         return str(self.nodes)
     def __repr__(self):
         return self.__str__()
-    cpdef copy(self):
+    cpdef Route copy(self):
         return Route(copy.copy(self.nodes), self.weight)
     cpdef bint is_equal(self, Route other):
         return np.array_equal(self.nodes, other.nodes) and self.weight == other.weight
@@ -42,59 +42,20 @@ cdef class Route:
         self.nodes.insert(index, client)
         return
 
+    cpdef double get_distance(Route self, np.ndarray distance_matrix):
+        """get the distance of the route"""
+        cdef double total_distance = 0.
+        cdef int client1, client2, index
+        for index in range(0, len(self.nodes)-1):
+            client1 = self.nodes[index]
+            client2 = self.nodes[index+1]
+            total_distance += distance_matrix[client1, client2]
+        return total_distance
 
-cpdef tuple get_information(Route route,
-                            np.ndarray distance_matrix,
-                            np.ndarray weights):
-    """calculate the distance and the capacity used by the route"""
-    cdef double distance = 0.
-    cdef double weight = 0
-    for (index, node) in enumerate(route.nodes[:-1]):
-        # calculate the distance from this node to the next
-        distance += distance_matrix[node][route.nodes[index+1]]
-        weight += weights[node]
-    return (distance, weight)
-
-
-cpdef two_opt(route, int ind1, int ind3):
-    """2-opt procedure for local optimization"""
-    assert(ind1 != ind3 and ind1 + 1 != ind3)
-    assert(ind1 < ind3)
-    rev = route.nodes[ind1+1:ind3+1]
-    rev = rev[::-1]
-    route.nodes[ind1+1:ind3+1] = rev
-    return
-
-
-cpdef steepest_improvement(route, np.ndarray distance_matrix):
-    """route reorganization optimization, greedy local search
-       as described in: Solving the Vehicle Routing Problem with Genetic Algorithms,
-       Áslaug Sóley Bjarnadóttir"""
-    if len(route.nodes) < 5:
-        # 2 nodes routes are empty, 3 and 4 are automatically optimal
-        return
-    cdef int ind1, ind3, n1, n2, n3, n4
-    cdef int best_ind1 = 0
-    cdef int best_ind3 = 0
-    cdef double savings = 0.
-    cdef double proposed_savings = 0.
-    while True:  # iterate until there isn't any better local choice (2-opt)
-        savings = 0.
-        for ind1 in range(0, len(route.nodes)-2):
-            for ind3 in range(ind1+2, len(route.nodes)-1):
-                n1 = route.nodes[ind1]
-                n2 = route.nodes[ind1 + 1]
-                n3 = route.nodes[ind3]
-                n4 = route.nodes[ind3+1]
-                actual = distance_matrix[n1][n2] + distance_matrix[n3][n4]
-                proposed = distance_matrix[n1][n3] + distance_matrix[n2][n4]
-                proposed_savings = actual - proposed
-                if proposed_savings > savings:
-                    best_ind1 = ind1
-                    best_ind3 = ind3
-                    savings = proposed_savings
-        if savings > 0.:
-            two_opt(route, best_ind1, best_ind3)
-        else:
-            return
-    return
+    cpdef double get_weight(Route self, np.ndarray weights):
+        """get the distance of the route"""
+        cdef double total_weight = 0.
+        cdef int client
+        for client in self.nodes:
+            total_weight += weights[client]
+        return total_weight

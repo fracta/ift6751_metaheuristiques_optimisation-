@@ -4,7 +4,7 @@ cimport numpy as np
 import numpy as np
 
 cimport routes
-from routes cimport Route, get_information
+from routes cimport Route
 
 
 cdef class Solution:
@@ -13,7 +13,7 @@ cdef class Solution:
     cdef public double score
 
     cpdef Solution copy(Solution self)
-
+    cpdef np.ndarray get_information(Solution self, np.ndarray distance_matrix, np.ndarray weights)
 
 cdef inline bint richcmp_helper(int compare, int op):
     """Returns True/False for each compare operation given an op code.
@@ -31,7 +31,6 @@ cdef inline bint richcmp_helper(int compare, int op):
     elif op == 5: # >=
         return compare >= 0
 
-cpdef np.ndarray get_solution_information(Solution sol, np.ndarray distance_matrix, np.ndarray weights)
 
 cpdef list get_centroids(Solution sol, np.ndarray positions)
 

@@ -10,7 +10,11 @@ import random
 
 # get the route representation
 cimport routes
-from routes cimport Route, steepest_improvement
+from routes cimport Route
+
+# two opt improvement
+import two_opt
+from two_opt import steepest_improvement
 
 # get the solution representation
 cimport solution

@@ -37,14 +37,19 @@ cdef class Solution:
     cpdef Solution copy(Solution self):
         return Solution([route.copy() for route in self.routes], self.score)
 
-
-cpdef np.ndarray get_solution_information(Solution sol, np.ndarray distance_matrix, np.ndarray weights):
-    """returns [(distance, weight) for route in sol.routes]"""
-    cdef np.ndarray information = np.empty(len(sol.routes), dtype=[('dist', float),('weight', float)])
-    cdef int index
-    for index in range(len(sol.routes)):
-        information[index] = get_information(sol.routes[index], distance_matrix, weights)
-    return information
+    cpdef np.ndarray get_information(Solution self,
+                                     np.ndarray distance_matrix,
+                                     np.ndarray weights):
+        """returns [(distance, weight) for route in sol.routes]"""
+        cdef np.ndarray info = np.empty(len(self.routes), dtype=[('dist', float),('weight', float)])
+        cdef Route route
+        cdef int index
+        cdef double dist, weight
+        for index, route in enumerate(self.routes):
+            dist = route.get_distance(distance_matrix)
+            weight = route.get_weight(weights)
+            info[index] = (dist, weight)
+        return info
 
 
 cpdef list get_centroids(Solution sol, np.ndarray positions):
