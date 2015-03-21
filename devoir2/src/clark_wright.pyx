@@ -6,7 +6,6 @@ cimport numpy as np
 
 import copy
 import progress_bar
-import random
 
 # get the route representation
 cimport routes
@@ -120,6 +119,7 @@ cpdef tuple select_from_k(int k, np.ndarray savings):
     cdef int index, x_index, y_index
     cdef bint feasable = False
     cdef list adequate_indices = []
+    cdef int random_index
     # from the k largest savings, find the ones that are > 0
     cdef int l = len(indices[0])
     for index in range(l -k, l):
@@ -131,7 +131,8 @@ cpdef tuple select_from_k(int k, np.ndarray savings):
     # choose a random index from the feasable
     cdef tuple chosen_index
     if feasable == True:
-        chosen_index = random.choice(adequate_indices)
+        random_index = np.random.randint(0, len(adequate_indices))
+        chosen_index = adequate_indices[random_index]
     else:
         chosen_index = (indices[0][0], indices[1][0])
     return chosen_index
@@ -168,9 +169,7 @@ cpdef list cw_parallel_random(list original_routes,
 
 cpdef list random_savings(prob,
                           double time_limit,  # in seconds
-                          int k,
-                          np.ndarray distance_matrix,
-                          double vehicle_capacity):
+                          int k):
     """run random choices of the k-best savings at each step, num times"""
     # as suggested in "A new enhancement of the Clark and Wright Savings.."
     assert(time_limit > 0)
@@ -185,9 +184,9 @@ cpdef list random_savings(prob,
         if time_limit < time_difference:
             break
         p.update(time_difference/time_limit)
-        sol = cw_parallel_random(routes, distance_matrix, vehicle_capacity, k)
+        sol = cw_parallel_random(routes, prob.distance_matrix, prob.vehicle_capacity, k)
         for route in sol:
-            steepest_improvement(route, distance_matrix)
-        solutions.append(sol)
+            steepest_improvement(route, prob.distance_matrix)
+        solutions.append(Solution(sol))
     p.clean()
     return solutions

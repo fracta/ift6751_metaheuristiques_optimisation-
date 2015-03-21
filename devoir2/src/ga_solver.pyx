@@ -9,11 +9,15 @@ import clark_wright
 cimport cvrp
 from cvrp cimport CVRPProblem
 
+import interchange
+
 cimport routes
-from routes cimport Route, steepest_improvement
+from routes cimport Route
+
+from two_opt import steepest_improvement
 
 cimport solution
-from solution cimport Solution, get_solution_information
+from solution cimport Solution
 
 import progress_bar
 
@@ -76,41 +80,6 @@ cpdef Solution crossover(CVRPProblem cvrp_problem,
      by Nazif and Lee, 2012, modified with added Clark & Wright"""
 
     # select m / 2 routes with least discrepancy with the capacity limit from parent 1
-    cdef int to_select = np.round(len(parent1.routes)/2.)
-    cdef np.ndarray capacity_difference = np.abs(np.subtract(route_info["weight"],
-                                                             cvrp_problem.vehicle_capacity))
-    cdef np.ndarray indices = np.argpartition(capacity_difference, to_select)[: to_select]
-    #cdef np.ndarray indices = np.random.choice(np.arange(len(parent1.routes)), to_select)
-    cdef list inherited_routes = []
-    for index in indices:
-        inherited_routes.append(parent1.routes[index])
-
-
-    # let's reassemble the rest of the routes with savings :)
-    cdef set unserved_clients = find_unserved_clients(inherited_routes, cvrp_problem.num_clients)
-    cdef list new_routes = []
-    for client in np.arange(1, cvrp_problem.num_clients+1):
-        if client in unserved_clients:
-            new_routes.append(Route([0, client, 0], cvrp_problem.weights[client]))
-        else:
-            new_routes.append(None)
-    cdef list remaining_routes = clark_wright.cw_parallel(new_routes,
-                                                          cvrp_problem.distance_matrix,
-                                                          cvrp_problem.vehicle_capacity)
-    for route in remaining_routes:
-        steepest_improvement(route, cvrp_problem.distance_matrix)
-    # concatenate the routes
-    inherited_routes.extend(remaining_routes)
-    return Solution(inherited_routes)
-
-
-cpdef Solution crossover_petals(CVRPProblem cvrp_problem,
-                                Solution parent1, Solution parent2,
-                                np.ndarray route_info):
-    """"Optimised crossover genetic algoritm for capacited vehicle routing problem"
-     by Nazif and Lee, 2012, modified with added Clark & Wright"""
-
-    # select m / 2 routes with least discrepancy with the capacity limit from parent 1
 
     cdef tuple indices = find_inherited_routes(parent1, parent2, cvrp_problem.positions)
     cdef list inherited_routes = []
@@ -139,22 +108,13 @@ cpdef Solution crossover_petals(CVRPProblem cvrp_problem,
     return Solution(inherited_routes)
 
 
-cpdef mutate_
-
-
-cpdef mutate(Solution sol, int num_clients, np.ndarray weights):
-    """insertion mutation operator (Graglia et al.)"""
-    cdef int route1, route2, client, insert_position
-    route1, route2 = select_2(0, len(sol.routes))
-    if len(sol.routes[route1].nodes) <= 3:
-        return # to avoid emptying routes
-
-    # remove the client and adjust the weight of the route
-    client = sol.routes[route1].nodes.pop(np.random.randint(1, len(sol.routes[route1].nodes)-1))
-
-    # insert the client and adjust the weight of the route
-    insert_position = np.random.randint(1, len(sol.routes[route2].nodes)-1)
-    sol.routes[route2].nodes.insert(insert_position, client)
+cpdef mutate(Solution sol, CVRPProblem prob):
+    """mutate the solution using lambda interchange"""
+    interchange.steepest_descent(sol,
+                                 prob.distance_matrix,
+                                 prob.weights,
+                                 prob.vehicle_capacity,
+                                 5)
     return
 
 
@@ -211,7 +171,7 @@ cpdef list initialize_population(CVRPProblem cvrp_problem, int pop_size, int k):
 
 cpdef double calculate_score(Solution sol, CVRPProblem cvrp_problem, double penalty=1000.):
     """calculate the fitness based on Graglia et al."""
-    cdef np.ndarray information = get_solution_information(sol, cvrp_problem.distance_matrix, cvrp_problem.weights)
+    cdef np.ndarray information = sol.get_information(cvrp_problem.distance_matrix, cvrp_problem.weights)
     cdef double overcap = 0.
     cdef double total_distance = 0.
     cdef double score
@@ -224,12 +184,11 @@ cpdef double calculate_score(Solution sol, CVRPProblem cvrp_problem, double pena
 
 
 cpdef solve(CVRPProblem cvrp_problem,
-            int initialize_size,  # size of the c&w initial exploration
             int population_size,
             int num_generations,
             double elitism = 0.1,
             double recombination_prob=0.65,
-            double mutation_prob=0.1,
+            double mutation_prob=0.05,
             int k=4):
     """solve the cvrp problem using a simple genetic algorithm"""
     # initialize the population using the k-savings
@@ -287,14 +246,14 @@ cpdef solve(CVRPProblem cvrp_problem,
 
             # crossover
             if np.random.rand() < recombination_prob:
-                p1_info = get_solution_information(parent1, cvrp_problem.distance_matrix, cvrp_problem.weights)
-                child = crossover_petals(cvrp_problem, parent1, parent2, p1_info)
+                p1_info = parent1.get_information(cvrp_problem.distance_matrix, cvrp_problem.weights)
+                child = crossover(cvrp_problem, parent1, parent2, p1_info)
             else:
                 child = parent1.copy()
 
             # mutation
             if np.random.rand() < mutation_prob:
-                mutate(child, cvrp_problem.num_clients, cvrp_problem.weights)
+                mutate(child, cvrp_problem)
             children.append(child)
 
         # replace the population by its children and the previous elite
@@ -303,4 +262,11 @@ cpdef solve(CVRPProblem cvrp_problem,
 
     # clean the progress bar
     bar.clean()
-    return population, best_solutions
+
+    # improve the solutions
+    for sol in best_solutions:
+        interchange.steepest_descent(sol,
+                                     cvrp_problem.distance_matrix,
+                                     cvrp_problem.weights,
+                                     cvrp_problem.vehicle_capacity)
+    return best_solutions

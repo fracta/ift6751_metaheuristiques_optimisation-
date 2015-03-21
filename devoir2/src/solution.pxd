@@ -14,6 +14,7 @@ cdef class Solution:
 
     cpdef Solution copy(Solution self)
     cpdef np.ndarray get_information(Solution self, np.ndarray distance_matrix, np.ndarray weights)
+    cpdef double get_distance(Solution self, np.ndarray distance_matrix)
 
 cdef inline bint richcmp_helper(int compare, int op):
     """Returns True/False for each compare operation given an op code.

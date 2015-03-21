@@ -11,7 +11,8 @@ from cvrp cimport CVRPProblem
 cimport routes
 from routes cimport Route
 
-from interchange import Move, find_best_move
+cimport interchange
+from interchange cimport Move, find_best_move
 
 from two_opt import steepest_improvement
 
@@ -123,7 +124,7 @@ cpdef Move best_client_interchange_tabu(Route route1,
             removal_savings2 = removal_cost(route2, ind2, distance_matrix)
             client2 = route2.remove_client_index(ind2, weights)
 
-            if not tabulist.is_tabu(client1, client2):
+            if not tabulist.is_tabu(client1, client2, iteration):
                 # calculate the savings now
                 insertion_cost1, insertion_point2 = least_insertion_cost(client1, route2, distance_matrix, weights, vehicle_capacity)
                 insertion_cost2, insertion_point1 = least_insertion_cost(client2, route1, distance_matrix, weights, vehicle_capacity)
@@ -177,6 +178,71 @@ cpdef Move find_best_move_tabu(Route route1, Route route2,
         best = swap
     return best
 
+cdef class MovesMatrixTabu(MovesMatrix):
+    """modified moves matrix taking tabu into account"""
+
+    cpdef update(self, Solution sol,
+                 int index1, int index2,
+                 np.ndarray distance_matrix,
+                 np.ndarray weights,
+                 double vehicle_capacity):
+        """update all moves implying route 1 and route 2"""
+        cdef Move move
+        cdef Route route1, route2
+        cdef int num_routes = len(sol.routes)
+        cdef int i1, i2
+        for i1 in range(0, num_routes-1):
+            route1 = sol.routes[i1]
+            for i2 in range((i1+1), num_routes):
+                if i1==index1 or i1==index2 or i2==index1 or i2==index2:
+                    route2 = sol.routes[i2]
+                    move = find_best_move_tabu(route1, route2,
+                                               distance_matrix,
+                                               weights,
+                                               vehicle_capacity,
+                                               iteration,
+                                               tabulist)
+                    self.matrix[i1, i2] = move
+                    self.matrix[i2, i1] = move
+
+    cpdef update_tabu(MovesMatrixTabu self,
+                      Solution sol,
+                      int client,
+                      np.ndarray distance_matrix,
+                      np.ndarray weights,
+                      double vehicle_capacity,
+                      int iteration,
+                      TabuList tabulist):
+        """update all the moves implying the client"""
+        assert(client != 0), "invalid client"
+        cdef int route_index = -1
+        cdef int index
+        cdef Route route
+
+        # find the route in which the client belongs
+        for index, route in enumerate(sol.routes):
+            if client in route.nodes:
+                route_index = index
+                break
+        # update all routes implicating the 
+        cdef int num_routes = len(sol.routes)
+        cdef int i1, i2
+        for i1 in range(0, num_routes-1):
+            route1 = sol.routes[i1]
+            for i2 in range((i1+1), num_routes):
+                # if the specified route is amongst them
+                if i1==route_index or i2==route_index:
+                    route2 = sol.routes[i2]
+                    move = find_best_move_tabu(route1, route2,
+                                               distance_matrix,
+                                               weights,
+                                               vehicle_capacity,
+                                               iteration,
+                                               tabulist)
+                    self.matrix[i1, i2] = move
+                    self.matrix[i2, i1] = move
+        return
+
 
 # GENERATE INITIAL SOLUTION
 
@@ -221,42 +287,46 @@ cpdef solve(CVRPProblem prob, int num_iterations):
 
     # initialize a solution using Clark & Wright savings
     cdef Solution sol = generate_initial_solution(prob)
+    cdef Solution best_solution = sol
+
+    sol.score = sol.get_distance(prob.distance_matrix)
+    cdef double score = sol.score
+    cdef double best_score = score
 
     # create the Tabu objects and parameters (tabu list and others)
-    TabuList tabu_list = TabuList(prob.num_clients, len(sol.routes))
+    cdef TabuList tabu_list = TabuList(prob.num_clients, len(sol.routes))
+    cdef MovesMatrix possible_moves = MovesMatrix(sol,
+                                                  prob.distance_matrix,
+                                                  prob.weights,
+                                                  prob.vehicle_capacity)
+    cdef np.ndarray tabu_to_remove = np.zeros(num_iterations, dtype=[("x", int), ("y", int)])
 
     # between 0.4 and 0.6 * n of clients
     cdef int tabu_duration = np.random.uniform(0.4, 0.6) * prob.num_clients
     cdef int tabu_expiration
 
-    # remember the best solution
-    cdef Solution best_solution = sol
-    cdef double best_score = sol.score
-
-    # set the current solution and score
-    cdef Solution current_solution = sol
-    cdef double current_score = sol.score
-
     # misc objects
     p = progress_bar.ProgressBar("Tabu Search")
     cdef Move move
+    cdef int x, y
+    cdef int tabu_remov1, tabu_remov2
 
-    # keep a list of the tabus to remove
-    cdef np.ndarray tabu_to_remove = np.zeros(num_iterations, dtype=[("x", int), ("y", int)])
+    for current_iteration in range(num_iterations):
+        # TABU REMOVAL
+        tabu_remov1, tabu_remov2 = tabu_to_remove[current_iteration]
+        if tabu_remov1 != 0 or tabu_remov2!= 0:
+            # update the routes involving moves that aren't tabu anymore
+            possible_moves.update_tabu(sol,
+                                       tabu_remov1,
+                                       tabu_remov2,
+                                       prob.distance_matrix,
+                                       prob.weights,
+                                       prob.vehicle_capacity)
 
-    # loop until termination is required
-    for current_iteration in range(max_iterations):
-        # at each tour, a new tabu must be removed
-        # since we keep the tabu duration constant, a single one
-        # happens and a new one disappears at each iteration
-        
-        # recalculate
-
-        # update the progress bar
         p.update(float(current_iteration) / max_iterations)
 
         # choose feasable and admissible move in neighborhood
-        selected_move, delta = best_admissible(neighborhood(current_solution), tabu_list)
+        move = 
 
         # if there are no admissible solutions in the neighborhood
         #  a new solution is chosen from random savings

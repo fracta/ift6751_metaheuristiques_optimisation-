@@ -6,10 +6,12 @@ from routes cimport Route
 cimport solution
 from solution cimport Solution
 
-from two_opt import steepest_improvement
+import two_opt
 
 cimport numpy as np
 import numpy as np
+
+import sys
 
 
 cdef class Move:
@@ -281,10 +283,8 @@ cdef class MovesMatrix:
                     best2 = index2
         return (best1, best2)
 
-    cpdef update(self,
-                 Solution sol,
-                 int index1,
-                 int index2,
+    cpdef update(self, Solution sol,
+                 int index1, int index2,
                  np.ndarray distance_matrix,
                  np.ndarray weights,
                  double vehicle_capacity):
@@ -296,66 +296,47 @@ cdef class MovesMatrix:
         for i1 in range(0, num_routes-1):
             route1 = sol.routes[i1]
             for i2 in range((i1+1), num_routes):
-                route2 = sol.routes[i2]
                 if i1==index1 or i1==index2 or i2==index1 or i2==index2:
-                    self.matrix[index1, index2] = find_best_move(route1, route2,
-                                                                 distance_matrix,
-                                                                 weights,
-                                                                 vehicle_capacity)
-      cpdef update_tabu(self,
-                        Solution sol,
-                        int client1,
-                        int client2,
-                        np.ndarray distance_matrix,
-                        np.ndarray weights,
-                        double vehicle_capacity):
-          """update all the moves implying the client"""
-          assert(client1 != 0), "invalid client"
-          assert(client2 != 0), "invalid client"
-          cdef int index
-          cdef Route route
-          cdef int index1, index2
-          for index, route in enumerate(sol.routes):
-              if client1 in route.nodes:
-                  index1 = index
-              if client2 in route.nodes:
-                  index2 = index
-          self.update(sol, index1, index2,
-                      distance_matrix, weights,
-                      vehicle_capacity)
-          return
+                    route2 = sol.routes[i2]
+                    move = find_best_move(route1, route2,
+                                          distance_matrix,
+                                          weights,
+                                          vehicle_capacity)
+                    self.matrix[i1, i2] = move
+                    self.matrix[i2, i1] = move
 
-cpdef steepest_descent(Solution sol,
-                       np.ndarray distance_matrix,
-                       np.ndarray weights,
-                       double vehicle_capacity):
+
+def steepest_descent(sol, distance_matrix,
+                     weights, vehicle_capacity,
+                     max_iteration=10**15):
     """greedily make the move that improves most the value"""
-    cdef Solution copied = sol.copy()
-    cdef MovesMatrix possible_moves = MovesMatrix(copied,
-                                                  distance_matrix,
-                                                  weights,
-                                                  vehicle_capacity)
-
-    cdef Move move
-    cdef int x, y
-    cdef int iteration = 0
+    cdef MovesMatrix possible_moves = MovesMatrix(sol,
+                                      distance_matrix,
+                                      weights,
+                                      vehicle_capacity)
+    iteration = 0
 
     while True:
-        iteration += 1
+        if iteration > max_iteration:
+            break
         x, y = possible_moves.min()
         move = possible_moves.get(x, y)
-
+        #print iteration
+        #print move
         # check if stuck in a local minima
-        if move.value > 0:
+        if move.value >= 0:
             break
 
         # update the solution
-        apply_move(copied.routes[x], copied.routes[y], move, weights)
+        apply_move(sol.routes[x], sol.routes[y], move, weights)
 
         # improve the path of the concerned routes
-        steepest_improvement(copied.routes[x], distance_matrix)
-        steepest_improvement(copied.routes[y], distance_matrix)
+        two_opt.steepest_improvement(sol.routes[x], distance_matrix)
+        two_opt.steepest_improvement(sol.routes[y], distance_matrix)
 
         # update the moves matrix
-        possible_moves.update(copied, x, y, distance_matrix, weights, vehicle_capacity)
-    return copied
+        possible_moves.update(sol, x, y, distance_matrix, weights, vehicle_capacity)
+
+        # update iteration count
+        iteration += 1
+    return sol

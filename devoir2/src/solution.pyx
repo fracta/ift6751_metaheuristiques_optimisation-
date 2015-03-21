@@ -51,6 +51,14 @@ cdef class Solution:
             info[index] = (dist, weight)
         return info
 
+    cpdef double get_distance(Solution self, np.ndarray distance_matrix):
+        """get the total distance used by the routes"""
+        cdef Route route
+        cdef double dist = 0
+        for route in self.routes:
+            dist += route.get_distance(distance_matrix)
+        return dist
+
 
 cpdef list get_centroids(Solution sol, np.ndarray positions):
     """get the centroid for each route of the solution"""
