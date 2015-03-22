@@ -268,5 +268,6 @@ cpdef solve(CVRPProblem cvrp_problem,
         interchange.steepest_descent(sol,
                                      cvrp_problem.distance_matrix,
                                      cvrp_problem.weights,
-                                     cvrp_problem.vehicle_capacity)
+                                     cvrp_problem.vehicle_capacity,
+                                     10**15)  # will never reach that hopefully
     return best_solutions

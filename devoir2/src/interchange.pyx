@@ -1,26 +1,20 @@
 """lambda-interchange with lambda=1, from Osman"""
-
 cimport routes
 from routes cimport Route
 
 cimport solution
 from solution cimport Solution
 
+cimport numpy as np
+
 import two_opt
 
-cimport numpy as np
 import numpy as np
 
 import sys
 
 
 cdef class Move:
-    cdef public float value
-    cdef public int client1
-    cdef public int client2
-    cdef public int r1_index
-    cdef public int r2_index
-
     def __init__(self, float value, int c1, int r2, int c2, int r1):
         self.value=value
         self.client1=c1
@@ -242,7 +236,6 @@ cpdef apply_move(Route route1, Route route2,
 
 
 cdef class MovesMatrix:
-    cdef np.ndarray matrix
 
     def __init__(self, Solution sol,
                  np.ndarray distance_matrix,
@@ -306,15 +299,17 @@ cdef class MovesMatrix:
                     self.matrix[i2, i1] = move
 
 
-def steepest_descent(sol, distance_matrix,
-                     weights, vehicle_capacity,
-                     max_iteration=10**15):
+cpdef steepest_descent(Solution sol, np.ndarray distance_matrix,
+                     np.ndarray weights, double vehicle_capacity,
+                     int max_iteration):
     """greedily make the move that improves most the value"""
     cdef MovesMatrix possible_moves = MovesMatrix(sol,
                                       distance_matrix,
                                       weights,
                                       vehicle_capacity)
-    iteration = 0
+    cdef int iteration = 0
+    cdef int x,y
+    cdef Move move
 
     while True:
         if iteration > max_iteration:

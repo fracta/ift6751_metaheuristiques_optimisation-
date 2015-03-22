@@ -19,7 +19,7 @@ from two_opt import steepest_improvement
 cimport solution
 from solution import Solution
 
-
+# to time the random montecarlo
 import timeit
 
 cdef inline double distance_savings(Route route1, Route route2,
