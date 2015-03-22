@@ -60,14 +60,14 @@ Finally, a user guide is given in the supplementary section \ref{user_guide}.
 \subsection{2-opt descent}
 \label{local_tsp}
 
-First, a simple and fast optimization method for the TSP was needed to improve the path of each routes.
+First, a simple and fast optimization method for the TSP was needed to improve the path of each routes.\newline
 
 The local search method used to optimize individual routes is the steepest improvement method as described in \citep{steepest_improvement}.
-Basically, it is a greedy use of the well known 2-opt method.\newline
+Basically, it is an implementation of steepest descent implementation using the well known 2-opt operator.\newline
 
 At each iteration, the best possible 2-opt is chosen, according to the reduction in total distance, until there isn't any possible improvement. The complexity of the procedure $O(n^{2})$ on the number of edges in the route.\newline
 
-Although it might seem slow, usually the number of edges is quite small and the time spent optimizing routes is relatively negligible.\newline
+Although it might seem slow, usually the number of edges is quite small and the time spent optimizing routes is negligible.\newline
 
 
 
@@ -92,7 +92,9 @@ This procedure is used in both the Tabu Search and Genetic Algorithm procedures.
 
 In the Genetic Algorithm procedure, the random savings is used to generate good initial solutions. The initialization step is costly but the quality of the initial population is great.\newline
 
-In the Tabu Search procedure, the random savings is used to initialize a solution, which is then locally explored until convergence is achieved.
+In the Tabu Search procedure, the random savings is used to generate an initial solution and new solutions each time the patience threshold is reached.\newline
+
+Random Savings itself is compared against both algorithm as a baseline.
 
 
 \newpage
@@ -102,7 +104,7 @@ In the Tabu Search procedure, the random savings is used to initialize a solutio
 
 \subsection{Encoding}
 
-The solutions are encoded using the Route object. Basically, a route is a list of clients that starts at the depot and ends at the depot, where no client is repeated. The solution is a list of routes, where each client is in exactly one route.\newline
+The solutions are encoded using the route and solution objects. Basically, a route is a list of clients that starts at the depot and ends at the depot, where no client is repeated and the total capacity is lesser or equal to the vehicle capacity. A solution is a list of routes, where each client is in exactly one route.\newline
 
 This representation isn't really friendly to classical genetic operators but allows functions defined on routes and solutions to be shared for both the Tabu Search and Genetic Algorithm representations.
 
@@ -128,7 +130,7 @@ The parents to the next generation are selected using the simple and well known 
 
 The crossover used here can be explained in terms of the cluster-first route-second methods.\newline
 
-Since the initial population is generated using the random savings \ref{random_savings} with 2-opt descent \ref{local_tsp} optimization applied on the resulting routes, the solutions are already good and the routes usually are pretty close to the optimal solution. However the choice of clusters, that is which clients belong together, is somewhat far from optimal.\newline
+Since the initial population is generated using the random savings \ref{random_savings} with 2-opt descent \ref{local_tsp} optimization applied on the resulting routes, the solutions are already good and the routes usually are pretty close to the best known solutions. However the choice of clusters, that is which clients belong together, is somewhat far from optimal.\newline
 
 Therefore, what was needed was a crossover that would allow for new clusters to be created while using part of the routes of the parents. To do so, routes are selected from both parents and the remaining clients have routes assigned to them using the Clark \& Wright savings. The second part is where new clusters should be formed.
 
@@ -150,7 +152,7 @@ Once the routes inherited are selected, the rest of the clients have routes assi
 
 \subsection{Mutation}
 
-A $n$ optimal $\lambda$-interchange \ref{local_cluster} with $\lambda$=1 are applied. In this case, $n$ is set to 5.
+A $n$ optimal $\lambda$-interchange \ref{local_cluster} with $\lambda$=1 are applied. In this case, $n$ is set to 5. That is $n$ iterations of the descent are done, unless a local optima is reached before.
 
 
 \subsection{Population Swap}
@@ -169,10 +171,11 @@ A number of iterations is given.
 %espace des solutions admissibles, fonction objectif, voisinage,
 %liste tabou, critères d’aspiration, intensification, diversification, critère d’arrêt
 
-With minor variations, the Tabu Search implementation was the same as described in \citep{osman1993}.
+With some variations, the Tabu Search implementation is very similar to the one described in \citep{osman1993}.
 
 
 \subsection{Encoding}
+
 The Tabu Search shares the same encoding for routes and solutions as the genetic algorithm. That way the local search methods are written once and work everywhere.
 
 \subsection{Solution Space}
@@ -182,7 +185,7 @@ Only feasible solutions are considered, that is those not violating the capacity
 
 \subsection{Objective Function}
 
-The objective function is the minimization of the total distance of the routes.
+The objective function is the minimization of the total distance of the routes. The same as the genetic algorithm.
 
 \begin{equation*}
 \begin{aligned}
@@ -196,16 +199,18 @@ The objective function is the minimization of the total distance of the routes.
 
 \subsection{Neighbourhood Structure}
 
-The neighbourhood of a solution is all the feasible solutions that can be reached by applying the $\lambda$-interchange, with $\lambda$=1.
+The neighbourhood of a solution is all the feasible non-tabu solutions that can be reached by applying the $\lambda$-interchange, with $\lambda$=1.\newline
+
+The best attainable solution in the whole neighbourhood is chosen at each iteration.
 
 
 \subsection{Tabu List}
 
-The tabu list is implemented as a matrix keeping the expiration of tabu status for pairs of $(client, route)$. This is exactly the same as in \citep{osman1993}.
+The tabu list is implemented as a matrix keeping the expiration of tabu status for pairs of $(client, route)$. This is exactly the same as in \citep{osman1993}. A $null$ client is used to represent the interchanges that imply only one client.\newline
 
-In this case, since the $\lambda$-interchange allows only exchange of clients between routes, the tabu is based on the clients implicated in the move. A $null$ client is used to represent the interchanges that imply only one client. No information is kept about the routes.\newline
-
-A fixed tabu duration is chosen according to the simple heuristic outlined in \citep{osman1993}, that is a value is picked in \begin{math} [0.4n,\ 0.6n] \end{math} is picked randomly, with $n$ being the number of clients in the problem. 
+A fixed tabu duration is chosen according to the simple heuristic outlined in \citep{osman1993}, that is its value is
+$max\{7,\ -40+9.6*ln(n * v)\}$
+where $n$ is the number of clients and $v$ is the number of vehicles used in the initial solution.
 
 
 \subsection{Asipration Criteria}
@@ -220,12 +225,14 @@ No intensification method was used.
 
 To allow for diversification, instead of keeping statistics on the solutions visited, a simple restart scheme was implemented.\newline
 
-The tabu search algorithm takes an integer argument called $patience$. The patience represents the number of iterations without new best solution found that is tolerated. If that number is crossed, the Tabu Search algorithm starts with a new solution and a fresh tabu list, procured by the random savings.
+The tabu search algorithm takes an integer argument called $patience$. The $patience$ represents the number of iterations without new best solution found that is tolerated. If that number is crossed, the Tabu Search algorithm starts with a new solution and a fresh tabu list, procured by the random savings.
 
 
 \subsection{Stopping Criteria}
 
-As with the random savings, the stopping criteria can be a set number of iterations or a time limit, depending on the type of constraints the user has.
+As with the random savings, the stopping criteria can be a set number of iterations or a time limit, depending on the type of constraints the user has.\newline
+
+For the experiment, a time limit of 60 seconds for each problem was used.
 
 
 %------------------------------------------------------------------------------
@@ -238,7 +245,7 @@ As with the random savings, the stopping criteria can be a set number of iterati
 \begin{figure}[!htb]
 \begin{center}
  \includegraphics[scale=0.45]{figures/rs_best}
- \caption{\small The random savings algorithm is used to generate solutions for each problem instance. Each of the 5 replicates is a run of 60 seconds of generating solutions in a Monte Carlo fashion, with specified depth of suboptimal choices considered (see \ref{random_savings} for more details). The total distance used by the best solution of each replicate is divided by the best known value of each problem instance. Seeing as each run lasts only 30 seconds, the results are surprisingly good.}
+ \caption{\small The random savings algorithm is used to generate solutions for each problem instance. Each of the 5 replicates is a run of 60 seconds of generating solutions in a Monte Carlo fashion, whit a depth of 3 suboptimal choices considered (see \ref{random_savings} for more details). The total distance used by the best solution of each replicate is divided by the best known value of each problem instance. Seeing as each run lasts only 60 seconds, the results are surprisingly good.}
  \label{rs_fig}
  \end{center}
 \end{figure}
@@ -247,11 +254,10 @@ As with the random savings, the stopping criteria can be a set number of iterati
 \newpage
 \subsection{Genetic Algorithm}
 
-
 \begin{figure}[!htb]
 \begin{center}
  \includegraphics[scale=0.45]{figures/ga_best}
- \caption{\small  The genetic algorithm is used to generate solutions for each problem instance. Each of the 5 replicates is a run of 100 iterations with a population size of 200. Additional parameters are specified in the corresponding IPython notebook. With 5 replicates, the total distance used by the best solution of each replicate is divided by the best known value of each problem instance. The results are acceptable, but not as good as expected given that the random savings was much quicker and the solutions generated here are only slightly better. Then again, the last bits of performance are usually the hardest to get.}
+ \caption{\small  The genetic algorithm is used to generate solutions for each problem instance. Each of the 5 replicates is a run of 100 iterations with a population size of 200. The average time for each problem is specified on the $y$ axis. Additional parameters are specified in the corresponding IPython notebook. With 5 replicates, the total distance used by the best solution of each replicate is divided by the best known value of each problem instance. The results are acceptable, but not as good as expected given that the random savings was much quicker and the solutions generated here are only slightly better. Then again, the last bits of performance are usually the hardest to get.}
  \label{ga_fig}
  \end{center}
 \end{figure}
@@ -263,16 +269,17 @@ As with the random savings, the stopping criteria can be a set number of iterati
 \begin{figure}[!htb]
 \begin{center}
  \includegraphics[scale=0.45]{figures/tabu_search}
- \caption{\small  The genetic algorithm is used to generate solutions for each problem instance. Each of the 5 replicates is a run of 100 iterations with a population size of 200. Additional parameters are specified in the corresponding IPython notebook. With 5 replicates, the total distance used by the best solution of each replicate is divided by the best known value of each problem instance. The results are acceptable, but not as good as expected given that the random savings was much quicker and the solutions generated here are only slightly better. Then again, the last bits of performance are usually the hardest to get.}
+ \caption{\small  The Tabu Search is used to generate solutions for each problem instance. Each of the 5 replicates is a run of 60 seconds with a patience of 1000 iterations. Additional parameters are specified in the corresponding IPython notebook. With 5 replicates, the total distance used by the best solution of each replicate is divided by the best known value of each problem instance. The results are quite good, but far from the best known values and sadly too close to the random savings to justify the complexity of the implementation. Given more time, much better results could probably have been reached.}
  \label{ts_fig}
  \end{center}
 \end{figure}
 
 
+\newpage
 \section{Discussion}
 \label{analysis_results}
 
-The CVRP is a hard problem and the experimental results are encouraging.\newline
+The CVRP is a hard problem and the experimental results are acceptable in my opinion.\newline
 
 \subsection{Random Savings: Speed And Simplicity}
 The Random Savings \ref{rs_fig} had much more success than expected, especially since there was a 30 seconds time limit for solving. For vrpnc1, vrpnc12 and vrpnc11 the best results are very close to optimality. This can be explained by the location of the clients for vrpnc11 and vrpnc12 while vrpnc1 has the least amount of clients.\newline
@@ -294,19 +301,19 @@ In my opinion, this algorithm was simpler and much more fun to implement than th
 
 \subsection{Tabu Search: Middle Ground}
 
-The tabu search was quite hard to implement compared to previous algorithms. In my opinion it would be because all of the design parameters must be known beforehand to make it efficient. The choice of the local optimization dictates how the rest of the algorithm should be implemented more strictly than I would like.\newline
+The tabu search was quite hard to implement compared to previous algorithms. In my opinion it would be because all of the design parameters must be known beforehand to make it efficient. The choice of the local optimization method is crucial dictates how the rest of the algorithm should be implemented more strictly than I would like.\newline
 
-However, since the best known values have been obtained using such algorithm, the idea must be good.\newline
+However, since the best known values have been obtained using such algorithm, the idea have its merits.\newline
 
 With this implementation and a runtime limit of a minute for each program, the results stand in between the random savings and the genetic algorithm in terms of solution quality.\newline
 
-The simplicity of the implementation is probably to blame for the relatively poor performance of the tabu search.
+The simplicity of the implementation is probably to blame for the relatively poor performance.
 
 
 \subsection{Tradeoffs}
 
-
 Considering three attributes, that is speed, simplicity and quality of the solutions, each algorithm has something interesting to offer.\newline
+
 
 \subsubsection{Simplicity}
 
@@ -315,33 +322,30 @@ From the standpoint of simplicity, the random savings is a clear winner. With on
 
 \subsubsection{Solution Quality}
 
-Given that the algorithm is given much more time to come up with solutions, the genetic algorithm is a winner for the quality of the solutions. Second comes the tabu search and then the random savings.\newline
+Since the genetic algorithm is given much more time than the two others, it is no surprise that it has the best solution quality. Second comes the tabu search and then the random savings.\newline
 
 In my opinion, the tabu search has a lot more to offer than what I implemented, but I was limited by my actual knowledge. I would initially have liked to implement something like the TabuRoute algorithm \citep{taburoute}, but the heavy dependency on previous work and the lack of example implementations was discouraging.\newline
 
 
 \subsubsection{Speed}
 
-In my opinion, considering the time limit imposed on Tabu Search and the naïve implementation, I would declare the Tabu Search the best in regard of speed. I believe that given a little more time it would outshine both the genetic algorithm and random savings.\newline
+In my opinion, considering the time limit imposed on Tabu Search and the relatively poor implementation, I would declare the Tabu Search the best in regard of speed. I believe that given a little more time it would probably outshine both the genetic algorithm and random savings.\newline
 
 The random savings would rank second and the genetic algorithm far last.
 
 
-%------------------------------------------------------------------------------
 \section{Conclusion}
 
 Overall, this homework was an interesting exercise and I tried to come up with original solutions to solve the capacitated vehicle routing problem.\newline
 
 Quite a lot of literature was explored to come up with solutions, but sadly most of the solutions I came upon depended on earlier articles inaccessible because of paywalls and very few (read none) had exemple implementations. I would honestly have preferred a Fortran code to the pseudocode given.\newline
 
-None of the solvers got really close to the results given by TabuRoute [\citep{taburoute}] but then again, I didn't expect them to be that good.\newline
+None of the solvers got really close to the results given by TabuRoute \citep{taburoute} but then again, I didn't expect them to be that good.\newline
+
 
 \bibliographystyle{plain}
 
 \bibliography{dev2}
-
-
-
 
 
 \newpage
