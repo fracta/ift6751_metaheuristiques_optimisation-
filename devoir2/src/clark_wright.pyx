@@ -109,6 +109,36 @@ cpdef list cw_parallel(list original_routes,
     return result
 
 
+cpdef list cw_parallel_demo(list original_routes,
+                            np.ndarray distance_matrix,
+                            double vehicle_capacity,
+                            int num_iter):
+    """solve the cvrp problem using the original clark & wright parallel heuristic"""
+    # setup
+    cdef list routes = copy.copy(original_routes)
+    cdef list valid_routes = [i for i in range(len(routes)) if routes[i] != None]
+    cdef np.ndarray savings = calculate_savings(routes, valid_routes, distance_matrix, vehicle_capacity)
+
+    # loop until no good savings left (max (savings) <= 0)
+    cdef int iter_index = 1
+    while iter_index <= num_iter:
+        iter_index += 1
+        index1, index2 = np.unravel_index(savings.argmax(), (savings.shape[0], savings.shape[1]))
+        # stop if there is still a valid merge possible
+        if savings[index1, index2] <= 0:
+            break
+        else:
+            merge_routes(routes, valid_routes, index1, index2, savings, distance_matrix, vehicle_capacity)
+    # remove the non-routes (None) from the route list
+    result = []
+    for route in routes:
+        if route == None:
+            result.append(Route([0,0], 0))
+        else:
+            result.append(route)
+    return result
+
+
 cpdef tuple select_from_k(int k, np.ndarray savings):
     """select the index amongst the k best (or less if there isn't enough feasable)
        must make sure that the saving > 0"""

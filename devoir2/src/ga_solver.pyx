@@ -263,11 +263,11 @@ cpdef solve(CVRPProblem cvrp_problem,
     # clean the progress bar
     bar.clean()
 
-    # improve the solutions
-    for sol in best_solutions:
-        interchange.steepest_descent(sol,
-                                     cvrp_problem.distance_matrix,
-                                     cvrp_problem.weights,
-                                     cvrp_problem.vehicle_capacity,
-                                     10**15)  # will never reach that hopefully
+    ## improve the solutions
+    #for sol in best_solutions:
+        #interchange.steepest_descent(sol,
+                                     #cvrp_problem.distance_matrix,
+                                     #cvrp_problem.weights,
+                                     #cvrp_problem.vehicle_capacity,
+                                     #10**15)  # will never reach that hopefully
     return best_solutions

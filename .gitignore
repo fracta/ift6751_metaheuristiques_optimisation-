@@ -72,3 +72,9 @@ target/
 *.bbl
 *.blg
 *.out
+
+# presentation tmp files
+presentation/*.pdf
+*.nav
+*.snm
+*.toc

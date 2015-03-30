@@ -39,7 +39,7 @@ In this homework, two different approaches to solve the capacitated vehicle rout
 
 Two greedy local search methods are used within both methods to improve the results such as the 2-opt descent and  and the $\lambda$-interchange descent.\newline
 
-Another method based on the Clark \& Wright savings is also used to initialize solutions for both metaheuristics.\newline
+Another method based on the Clarke \& Wright savings is also used to initialize solutions for both metaheuristics.\newline
 
 
 Both methods were tested against problem instances without length limit, from \citep{christofides} and compared to the best known solutions.\newline
@@ -83,8 +83,8 @@ The procedure chooses the interchange with best possible improvement and applies
 \newpage
 \section{Random Savings Initialization}
 \label{random_savings}
-The Clark \& Wright savings algorithm is a well known simple heuristic for the CVRP.
-Many improvements were suggested for this heuristic \cite{clark_wright_ds}.\newline
+The Clarkee \& Wright savings algorithm is a well known simple heuristic for the CVRP.
+Many improvements were suggested for this heuristic \cite{Clarkee_wright_ds}.\newline
 
 The one used in this work is a slight variant of the parallel savings, where instead of choosing the best the best saving and merging the corresponding routes, the $k$ best savings are found and one is randomly chosen.\newline
 
@@ -132,7 +132,7 @@ The crossover used here can be explained in terms of the cluster-first route-sec
 
 Since the initial population is generated using the random savings \ref{random_savings} with 2-opt descent \ref{local_tsp} optimization applied on the resulting routes, the solutions are already good and the routes usually are pretty close to the best known solutions. However the choice of clusters, that is which clients belong together, is somewhat far from optimal.\newline
 
-Therefore, what was needed was a crossover that would allow for new clusters to be created while using part of the routes of the parents. To do so, routes are selected from both parents and the remaining clients have routes assigned to them using the Clark \& Wright savings. The second part is where new clusters should be formed.
+Therefore, what was needed was a crossover that would allow for new clusters to be created while using part of the routes of the parents. To do so, routes are selected from both parents and the remaining clients have routes assigned to them using the Clarkee \& Wright savings. The second part is where new clusters should be formed.
 
 
 \subsubsection{Selection Of Inherited Routes}
@@ -147,7 +147,7 @@ Overall, at most $\frac{n_1}{2}$ routes are inherited.
 
 \subsubsection{Assigning Routes To Remaining Clients}
 
-Once the routes inherited are selected, the rest of the clients have routes assigned to them using the Clark \& Wright parallel savings. The path of each resulting routes is then improved using the 2-opt descent local search.
+Once the routes inherited are selected, the rest of the clients have routes assigned to them using the Clarke \& Wright parallel savings. The path of each resulting routes is then improved using the 2-opt descent local search.
 
 
 \subsection{Mutation}

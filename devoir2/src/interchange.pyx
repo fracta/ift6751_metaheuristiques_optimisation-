@@ -316,12 +316,12 @@ cpdef steepest_descent(Solution sol, np.ndarray distance_matrix,
             break
         x, y = possible_moves.min()
         move = possible_moves.get(x, y)
-        #print iteration
+
         #print move
         # check if stuck in a local minima
+        #print move.value
         if move.value >= 0:
             break
-
         # update the solution
         apply_move(sol.routes[x], sol.routes[y], move, weights)
 
