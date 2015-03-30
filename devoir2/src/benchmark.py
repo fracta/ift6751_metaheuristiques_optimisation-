@@ -40,7 +40,7 @@ def display(problem, solution, cmap=matplotlib.cm.Set1, figsize=(15,10), show_le
         d = D[route_index]
         w = W[route_index]
         fract = route_index / num_routes
-        plt.plot(path['x'], path['y'], label="{:10.2f}; {}".format(d, w), color=cm(fract))
+        plt.plot(path['x'], path['y'], label="{:10.2f}; {}".format(d, w), color=cmap(fract))
 
     if show_legend==True:
         plt.legend()
@@ -168,6 +168,49 @@ def display_routes_cm(problem, routes, cmap, figsize=(15,10), show_legend=True):
     for index, tup in enumerate(positions[1:]):
         plt.annotate(tup["id"], (tup["x"], tup["y"]))
     return fig
+
+
+
+def display_routes_col(problem, routes, col, figsize=(15,10), ax=None, show_legend=True, title=""):
+    """print a cvrp solution with route annotation"""
+
+    # make local refs
+    positions = problem.positions
+    distance_matrix = problem.distance_matrix
+    weights = problem.weights
+    vehicle_capacity = problem.vehicle_capacity
+
+    # get the distance and weight information
+    D = [route.get_distance(distance_matrix) for route in routes]
+    W = [route.get_weight(weights) for route in routes]
+
+    total_distance = sum(D)
+    maximum_distance = max(D)
+
+    # start the layout of the figure
+    if ax == None:
+        fig, ax = plt.subplots(1, figsize=figsize)
+
+    num_valid_routes = len([r for r in routes if r.nodes != [0, 0]])
+    ax.set_title(title)
+    ax.scatter(positions[1:]['x'], positions[1:]['y']) # clients
+    ax.scatter(positions[0]['x'],  positions[0]['y'], marker='s', color=col) # depot
+
+    # plot the routes
+    num_routes = float(len(routes))
+    for (route_index, route) in enumerate(routes):
+        path = np.zeros(len(route.nodes), dtype=[("x", float), ("y", float)])
+        for (i, e) in enumerate(route.nodes):
+            path[i] = positions[e]
+        d = D[route_index]
+        w = W[route_index]
+        fract = route_index / num_routes
+        ax.plot(path['x'], path['y'], label="{:10.2f}; {}".format(d, w), color=col, linewidth=4)
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    if show_legend==True:
+        plt.legend()
+    return
 
 # BENCHMARKING
 

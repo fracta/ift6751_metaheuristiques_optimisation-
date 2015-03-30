@@ -89,7 +89,6 @@ cpdef Solution crossover(CVRPProblem cvrp_problem,
     for index in indices[1]:
         inherited_routes.append(parent2.routes[index])
 
-
     # let's reassemble the rest of the routes with savings :)
     cdef set unserved_clients = find_unserved_clients(inherited_routes, cvrp_problem.num_clients)
     cdef list new_routes = []
