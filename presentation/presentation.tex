@@ -161,27 +161,33 @@
 
 \section{Genetic Algorithm}
 
-
-
-
-\subsection{Crossover}
-
 \begin{frame}
-\frametitle{Crossover Description}
+\frametitle{Overview}
+\begin{center}
+\includegraphics[scale=0.25]{ga}
 
-\begin{itemize}
-	\item[1] arrange routes by angle of centroid to depot
-	\item[2] choose $\frac{n}{4}$ contiguous routes from parent 1
-	\item[3] choose at most $\frac{n}{4}$ contiguous non-intersecting routes from parent 2
-	\item[4] assign routes to the rest of clients using parallel savings 
-\end{itemize}
-
+\end{center}
 \end{frame}
 
 
+%\subsection{Crossover}
+%
+%\begin{frame}
+%\frametitle{Crossover Description}
+%
+%\begin{itemize}
+%	\item[1] arrange routes by angle of centroid to depot
+%	\item[2] choose $\frac{n}{4}$ contiguous routes from parent 1
+%	\item[3] choose at most $\frac{n}{4}$ contiguous non-intersecting routes from parent 2
+%	\item[4] assign routes to the rest of clients using parallel savings 
+%\end{itemize}
+%
+%\end{frame}
+
+
 
 \begin{frame}
-\frametitle{Crossover example}
+\frametitle{Crossover}
 \begin{center}
 \includegraphics[scale=0.25]{figs/crossover}
 
@@ -214,21 +220,21 @@
 \end{frame}
 
 
-\subsection{Free Parameters}
-\begin{frame}
-\frametitle{Genetic Algorithm Parameters}
-\begin{center}
-\begin{itemize}
-	\item number of generations
-	\item population size
-	\item elitism (percentage of transfer)
-	\item recombination probability
-	\item mutation probability
-	\item $k$ for random savings
-\end{itemize}
-
-\end{center}
-\end{frame}
+%\subsection{Free Parameters}
+%\begin{frame}
+%\frametitle{Genetic Algorithm Parameters}
+%\begin{center}
+%\begin{itemize}
+%	\item number of generations
+%	\item population size
+%	\item elitism (percentage of transfer)
+%	\item recombination probability
+%	\item mutation probability
+%	\item $k$ for random savings
+%\end{itemize}
+%
+%\end{center}
+%\end{frame}
 
 \subsection{Results}
 \begin{frame}
