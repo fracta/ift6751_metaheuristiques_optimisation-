@@ -6,6 +6,7 @@
 \usepackage[numbers,sort]{natbib}
 \usepackage{graphicx}
 \usepackage[export]{adjustbox}
+\usepackage{cleveref}
 \usepackage{footmisc}
 \usepackage[section]{placeins}
 \usepackage{hyperref}
@@ -33,53 +34,88 @@ Gabriel C-Parent\\
 \maketitle
 \section{Introduction}
 
-In this homework, an Elastic Net algorithm is used to solve the traveling salesperson problem (TSP). Using %\href{TSPLIB 
+In this homework, an Elastic Net algorithm is used to solve the traveling salesperson problem.
 
- different approaches to solve the capacitated vehicle routing problem (CVRP) were designed. The first one is a genetic algorithm using specialized crossover and mutation operators whereas the the second one uses the Tabu Search to control local search with the $\lambda$-interchange neighbourhood.\newline
+\subsection{The TSP}
 
-Two greedy local search methods are used within both methods to improve the results such as the 2-opt descent and  and the $\lambda$-interchange descent.\newline
+The Traveling Salesperson Problem (TSP) is a landmark problem in combinatorial optimization and an hard one (NP-Hard)\citep{euc_tsp_complete}.\newline
 
-Another method based on the Clarke \& Wright savings is also used to initialize solutions for both metaheuristics.\newline
+The basic idea is that a salesperson needs to travel to a set of cities and come back to its original city in the shortest time (distance) possible. This corresponds to finding an Hamiltonian cycle of minimal distance.\newline
 
-
-
-
-A description of all the optimization methods along with special implementation details is given.
-Some experimental results are then compared based on running time, implementation complexity and results quality.\newline
-
-Finally, a user guide is given in the supplementary section \ref{user_guide}.
+There exists a number of variants of the classical statement such as the metric TSP, euclidean TSP and the asymmetric TSP. 
 
 
 
-\newpage
-\section{Local Search Methods}
-\label{local_search}
+\subsection{Elastic Net}
 
-\subsection{2-opt descent}
-\label{local_tsp}
+The TSP has been studied extensively and many approaches are available to solve it ranging from heuristics to exact methods. The problem was even solved with DNA computing \citep{adleman}. The problem can be formulated as an integer linear program so that classical mathematical programming tools can be used.\newline
 
-First, a simple and fast optimization method for the TSP was needed to improve the path of each routes.\newline
+The Elastic Net is a geometrical approach to the TSP \citep{en_original}. It consists of having a ring of neurons initialized in the center of the cities which is then elongated (think of a rubber band) by minimizing the length of the band and the distance of the band points to cities for a set number of iterations. Eventually, the rubber band stabilizes and a traversal is extracted by assigning cities to the nearest neuron until no city is left unassigned.\newline
 
-The local search method used to optimize individual routes is the steepest improvement method as described in \citep{steepest_improvement}.
-Basically, it is an implementation of steepest descent implementation using the well known 2-opt operator.\newline
+The implementation used here is quite naive and some specifics must be documented. First, every problem instance is transposed onto the unit square to avoid underflow errors. Second, the update rule used here is the same as in \citep{en_original}, that is the parameter K is set to 0.2 and is decreased by 1\% every 25 iterations.
 
-At each iteration, the best possible 2-opt is chosen, according to the reduction in total distance, until there isn't any possible improvement. The complexity of the procedure $O(n^{2})$ on the number of edges in the route.\newline
-
-Although it might seem slow, usually the number of edges is quite small and the time spent optimizing routes is negligible.\newline
+Also, an additional 2-opt descent optimization was performed on the solutions.
 
 
-%------------------------------------------------------------------------------
+\subsection{Evaluation}
+
+From the evaluation standpoint, two relatively easy measures are available: using known problems or generating new ones as in \citep{en_original}.
+
+
+\subsubsection{TSPLIB instances}
+
+The first way of evaluating the quality of generated solutions is to use previously solved problem instances. To do so, the 2D euclidean TSP instances ("EUC\_2D") from TSPLIB \citep{tsplib} are used. Interestingly, to avoid floating-point precision problems, the total distance are calculated by rounding the distances between cities to the nearest integer.
+
+
+\subsubsection{Random Problems}
+Another way to evaluate the performance of our solver is to simply generate random new instances of problems with fixed number of clients (in this case 50, 100, 200) distributed uniformly through the unit square.
+
+For each problem size, the best distance over 5 different randomly generated instances is reported \citep{en_original}. Obviously, this is done using floating-point distance calculation.
+
+
+
+
 \newpage
 \section{Experimental Results}
-\label{exp_results}
+\label{results}
+
+
+\subsection{TSPLIB Instances}
+First of all, the Elastic Net was used to solve some of the 2D euclidean instances from TSPLIB.
+
+\begin{figure}[!htb]
+	\begin{center}
+	\includegraphics[scale=0.4]{figs/ratios}
+	\caption{\small Distance ratio of obtained solution against optimal known solution. The problems are arranged by the number of clients to visit in increasing order from left to right. We can see that the number of clients doesn't seem to influence the relative performance. Full solutions can be visualized in \cref{TSPLIB_solutions}.}
+	\end{center}
+\end{figure}
+
+
 
 \begin{figure}[!htb]
 \begin{center}
-\includegraphics[scale=0.4]{figs/ratios}
-\caption{\small Ratio of obtained solution against optimal known solution. The problems are arranged by the number of clients to visit in increasing order from left to right. We can see that the number of clients doesn't seem to influence the relative performance.}
+\includegraphics[scale=0.4]{figs/runtimes}
+\caption{\small Runtime measured in seconds for the different problem instances. The problems are arranged by the number of clients to visit in increasing order from left to right. We can see that the runtime grows with the number of clients (as expected).}
 \end{center}
-
 \end{figure}
+
+
+
+\newpage
+\subsection{Randomly Generated Instances}
+
+Here are the best results obtained for randomly generated problems of size 50, 100 and 200.
+
+\begin{figure}[!htb]
+\begin{center}
+\includegraphics[scale=0.45]{figs/random_tsp_50}
+\includegraphics[scale=0.45]{figs/random_tsp_100}
+\includegraphics[scale=0.45]{figs/random_tsp_200}
+
+\caption{\small Best solutions to (five different) randomly generated 2D euclidean TSP instances of size 50, 100 and 200. Compared to the results from \citep{potvin_ann}, the results are slightly worse than the ones for the Elastic Net but still much better than the Peterson and Soderberg model results.}
+\end{center}
+\end{figure}
+
 
 
 
@@ -88,15 +124,43 @@ Although it might seem slow, usually the number of edges is quite small and the 
 
 \newpage
 \section{Discussion}
+\label{discussion}
+
+
+\subsection{Implementation details}
+
+The Elastic Net was implemented in a sequential fashion.
+
+
+\subsection{Challenges}
+
+One needs to avoid exponentiating big negative numbers.
+
+
+\subsection{Performance}
+
+
+\subsubsection{Time}
+
+As expected, the algorithm is quite fast and could be much faster given a parallel implementation.
+
+
+\subsubsection{Quality}
+
+The performance is a bit lower than expected but the results are quite sensitive to parameters.
+
+
 
 
 
 \section{Conclusion}
+\label{conclusion}
+
+The elastic net approach to the TSP is an interesting idea with some nice theoretical guarantees \citep{en_theoretical_analysis}. 
 
 
 
 \bibliographystyle{plain}
-
 \bibliography{dev3}
 
 
@@ -153,9 +217,9 @@ Alternatively, the IPython notebooks can be viewed online if it is reachable fro
 
 
 
-\subsection{Experimental Solutions}
-
-For each of the figures following, the net, the corresponding path and the best path are arranged in lines.
+\subsection{TSPLIB Solutions}
+\label{TSPLIB_solutions}
+For each of the figures below, the Elastic Net, the corresponding path and the best path obtained from TSPLIB are arranged from left to right.
 
 \begin{figure}[!htb]
 \begin{center}
